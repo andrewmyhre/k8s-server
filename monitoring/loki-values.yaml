@@ -1,8 +1,10 @@
-# Loki values — single-binary mode for homelab single-node
-# Chart: grafana/loki
-# Install: helm install loki grafana/loki \
-#            --namespace monitoring \
-#            --values loki-values.yaml --timeout 5m
+# Loki helm values — single-binary mode for single-node homelab
+# Chart: grafana/loki v6.53.0
+# Namespace: monitoring
+# Install:
+#   helm install loki grafana/loki \
+#     --namespace monitoring --create-namespace \
+#     --values monitoring/loki-values.yaml --timeout 5m
 
 deploymentMode: SingleBinary
 
@@ -29,24 +31,25 @@ singleBinary:
     storageClass: local-path
     size: 20Gi
 
-# Disable distributed mode components
+# Disable multi-component mode (not needed for single-binary)
 backend:
   replicas: 0
 read:
   replicas: 0
 write:
   replicas: 0
+
 gateway:
   replicas: 0
 
 minio:
   enabled: false
 
-# Canary verifies loki is working end-to-end
-lokiCanary:
-  enabled: true
+resultsCache:
+  enabled: false
 
 chunksCache:
   enabled: false
-resultsCache:
-  enabled: false
+
+lokiCanary:
+  enabled: true

@@ -1,0 +1,27 @@
+# Argo Workflows helm values
+# Chart: argo/argo-workflows
+# Namespace: argo
+# Install:
+#   helm install argo-workflows argo/argo-workflows \
+#     --namespace argo --create-namespace \
+#     --values argo/argo-workflows-values.yaml
+# Upgrade:
+#   helm upgrade argo-workflows argo/argo-workflows \
+#     --namespace argo \
+#     --values argo/argo-workflows-values.yaml
+
+server:
+  extraArgs:
+    # Perimeter auth is handled by Cloudflare Access.
+    # server mode skips Argo's own login screen — all requests
+    # use the server's service account after CF Access validates the session.
+    - --auth-mode=server
+
+controller:
+  workflowNamespaces:
+    - argo
+    - legal-ingestor
+
+workflow:
+  serviceAccount:
+    create: true

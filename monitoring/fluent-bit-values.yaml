@@ -1,8 +1,10 @@
-# Fluent Bit values — ship pod logs to Loki
-# Chart: fluent/fluent-bit
-# Install: helm install fluent-bit fluent/fluent-bit \
-#            --namespace monitoring \
-#            --values fluent-bit-values.yaml --timeout 5m
+# Fluent Bit helm values — DaemonSet, collects pod logs → Loki
+# Chart: fluent/fluent-bit v0.56.0
+# Namespace: monitoring
+# Install:
+#   helm install fluent-bit fluent/fluent-bit \
+#     --namespace monitoring --create-namespace \
+#     --values monitoring/fluent-bit-values.yaml --timeout 5m
 
 config:
   service: |

@@ -1,8 +1,14 @@
-# kube-prometheus-stack values — homelab single-node (sleeper-service)
-# Chart: prometheus-community/kube-prometheus-stack
-# Install: helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-#            --namespace monitoring --create-namespace \
-#            --values kube-prometheus-stack-values.yaml --timeout 10m
+# kube-prometheus-stack helm values
+# Chart: prometheus-community/kube-prometheus-stack v82.5.0
+# Namespace: monitoring
+# Install:
+#   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     --values monitoring/kube-prometheus-stack-values.yaml --timeout 10m
+# Upgrade:
+#   helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring \
+#     --values monitoring/kube-prometheus-stack-values.yaml --timeout 10m
 
 grafana:
   adminPassword: admin  # Change after first login
@@ -19,7 +25,7 @@ grafana:
       nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
   grafana.ini:
     server:
-      root_url: https://grafana.immutablesoftware.dev
+      root_url: "https://grafana.immutablesoftware.dev"
   additionalDataSources:
     - name: Loki
       type: loki
@@ -51,5 +57,6 @@ alertmanager:
 
 kubeStateMetrics:
   enabled: true
+
 nodeExporter:
   enabled: true
