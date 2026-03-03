@@ -1,0 +1,55 @@
+# kube-prometheus-stack values — homelab single-node (sleeper-service)
+# Chart: prometheus-community/kube-prometheus-stack
+# Install: helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#            --namespace monitoring --create-namespace \
+#            --values kube-prometheus-stack-values.yaml --timeout 10m
+
+grafana:
+  adminPassword: admin  # Change after first login
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.immutablesoftware.dev
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+  grafana.ini:
+    server:
+      root_url: https://grafana.immutablesoftware.dev
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+      access: proxy
+
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+
+kubeStateMetrics:
+  enabled: true
+nodeExporter:
+  enabled: true
