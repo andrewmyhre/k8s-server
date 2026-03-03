@@ -1,0 +1,44 @@
+# Argo Workflows PodMonitors for Prometheus scraping
+# The argo-workflows helm chart doesn't create these automatically for this version.
+# Apply: kubectl apply -f argo/servicemonitors.yaml
+#
+# Argo server metrics:      pod port 2746 (name: web)
+# Workflow controller:      pod port 9090 (name: metrics)
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: argo-workflows-server
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - argo
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-server
+  podMetricsEndpoints:
+    - port: web
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: argo-workflows-controller
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - argo
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
