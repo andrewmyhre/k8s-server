@@ -15,6 +15,7 @@ elasticsearchCertificateAuthoritiesFile: "ca.crt"
 kibanaConfig:
   kibana.yml: |
     server.host: "0.0.0.0"
+    server.publicBaseUrl: "https://kibana.immutablesoftware.dev"
     xpack.encryptedSavedObjects.encryptionKey: "homelab-32-char-encryption-key!!"
 
 resources:
