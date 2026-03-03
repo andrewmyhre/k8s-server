@@ -1,4 +1,4 @@
-# Fluent Bit helm values — DaemonSet, collects pod logs → Loki
+# Fluent Bit helm values — DaemonSet, collects pod logs → Loki + Elasticsearch
 # Chart: fluent/fluent-bit v0.56.0
 # Namespace: monitoring
 # Install:
@@ -50,3 +50,14 @@ config:
         Labels          job=fluent-bit
         Label_Keys      $kubernetes['namespace_name'],$kubernetes['pod_name'],$kubernetes['container_name']
         Auto_Kubernetes_Labels On
+
+    [OUTPUT]
+        Name                es
+        Match               *
+        Host                elasticsearch-master.monitoring.svc.cluster.local
+        Port                9200
+        Logstash_Format     On
+        Logstash_Prefix     k8s-logs
+        Replace_Dots        On
+        Suppress_Type_Name  On
+        Retry_Limit         False

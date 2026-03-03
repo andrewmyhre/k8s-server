@@ -1,0 +1,50 @@
+# Elasticsearch helm values — single-node, security disabled for homelab
+# Chart: elastic/elasticsearch v8.5.1
+# Namespace: monitoring
+# Install:
+#   helm install elasticsearch elastic/elasticsearch \
+#     --namespace monitoring --version 8.5.1 \
+#     --values monitoring/elasticsearch-values.yaml --timeout 10m
+
+replicas: 1
+minimumMasterNodes: 1
+
+# Disable xpack security — homelab, no TLS/auth needed
+esConfig:
+  elasticsearch.yml: |
+    xpack.security.enabled: false
+    xpack.security.http.ssl.enabled: false
+    xpack.security.transport.ssl.enabled: false
+    ingest.geoip.downloader.enabled: false
+    # Homelab: disk is at ~90%; raise watermarks so ES can allocate shards
+    cluster.routing.allocation.disk.watermark.low: "95%"
+    cluster.routing.allocation.disk.watermark.high: "97%"
+    cluster.routing.allocation.disk.watermark.flood_stage: "99%"
+
+# Use http since TLS is disabled
+protocol: http
+createCert: false
+secret:
+  enabled: true
+  password: "changeme"  # Required by readiness probe script; security is disabled so not enforced
+
+# JVM heap: 2GB (fits comfortably in a 3GB container limit)
+esJavaOpts: "-Xmx2g -Xms2g"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "3Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+
+# Single-node: yellow is healthy (no replica shards)
+clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 50Gi
