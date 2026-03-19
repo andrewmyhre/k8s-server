@@ -12,6 +12,11 @@
 
 grafana:
   adminPassword: admin  # Change after first login
+  # initChownData runs as root with only CAP_CHOWN (no CAP_DAC_OVERRIDE).
+  # Grafana creates png/csv/pdf subdirs as 700, which root can't traverse
+  # without DAC_OVERRIDE. Data is already owned by UID 472, so skip this.
+  initChownData:
+    enabled: false
   persistence:
     enabled: true
     storageClassName: local-path
