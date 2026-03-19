@@ -1,0 +1,8 @@
+# Plaintext secrets — never commit these
+secrets/
+
+# CLI binaries checked out locally
+argocd
+
+# Logs
+*.log
