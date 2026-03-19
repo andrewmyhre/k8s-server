@@ -1,0 +1,356 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: aws-account
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-aws-account
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/aws-account/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            key: AWS_ACCESS_KEY_ID
+            name: pai-aws-credentials
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            key: AWS_SECRET_ACCESS_KEY
+            name: pai-aws-credentials
+      - name: AWS_DEFAULT_REGION
+        valueFrom:
+          secretKeyRef:
+            key: AWS_DEFAULT_REGION
+            name: pai-aws-credentials
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: civics
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-civics
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/civics/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: donk
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-donk
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/donk/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: home
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-home
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/home/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: job-search
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-job-search
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/job-search/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: travel
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-travel
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/travel/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: wellness
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-wellness
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/wellness/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: aws-account
+    pai.io/workflow: weekly
+  name: weekly-step-aws-account
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      command:
+      - bash
+      env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            key: AWS_ACCESS_KEY_ID
+            name: pai-aws-credentials
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            key: AWS_SECRET_ACCESS_KEY
+            name: pai-aws-credentials
+      - name: AWS_DEFAULT_REGION
+        valueFrom:
+          secretKeyRef:
+            key: AWS_DEFAULT_REGION
+            name: pai-aws-credentials
+      image: 192.168.0.10:30500/pai-runner:latest
+      source: "set -e\nOUT=/tmp/pai-weekly/sections/aws-account.md\nSCRIPTS=/home/andrew/.claude/skills/aws-cost-finops/scripts\n\
+        \necho \"## aws-account / Weekly Cost Audit\" > $OUT\necho \"\" >> $OUT\n\
+        echo \"**Run date:** $(date)\" >> $OUT\necho \"\" >> $OUT\n\necho \"### Unused\
+        \ Resources\" >> $OUT\npython3 $SCRIPTS/find_unused_resources.py --region\
+        \ us-east-1 2>&1 >> $OUT || echo \"Script error\" >> $OUT\n\necho \"\" >>\
+        \ $OUT\necho \"### Cost Anomalies (7 days)\" >> $OUT\npython3 $SCRIPTS/cost_anomaly_detector.py\
+        \ --days 7 --region us-east-1 2>&1 >> $OUT || echo \"Script error\" >> $OUT\n\
+        \necho \"\" >> $OUT\necho \"### Rightsizing Opportunities\" >> $OUT\npython3\
+        \ $SCRIPTS/rightsizing_analyzer.py --days 7 --region us-east-1 2>&1 >> $OUT\
+        \ || echo \"Script error\" >> $OUT\n\n# Voice notification\ncurl -s -X POST\
+        \ http://192.168.0.31:8888/notify \\\n  -H \"Content-Type: application/json\"\
+        \ \\\n  -d '{\"message\": \"Weekly AWS cost audit section complete.\", \"\
+        voice_id\": \"gJx1vCzNCD1EQHT212Ls\"}'\n"
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+

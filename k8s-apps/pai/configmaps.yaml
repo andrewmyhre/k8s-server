@@ -1,0 +1,161 @@
+apiVersion: v1
+data:
+  Dockerfile: 'FROM cgr.dev/chainguard/wolfi-base
+
+    RUN apk add --no-cache python-3 py3-pip aws-cli curl bash git nodejs-22 npm jq
+    kubectl
+
+    RUN pip install --no-cache-dir boto3 tabulate markdown requests
+
+    RUN npm install -g @anthropic-ai/claude-code
+
+    RUN echo ''IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiIKcGFpLW1vZHVsZS1ydW5uZXI6IFJlYWRzIGEgLmRhaWx5L3Byb21wdC5tZCwgZ2F0aGVycyBkYXRhIHNvdXJjZXMsCmNhbGxzIENsYXVkZSBBUEksIGFuZCB3cml0ZXMgQUktZ2VuZXJhdGVkIG91dHB1dCB0byB0aGUgZGFpbHkgc2VjdGlvbnMgZGlyLgoiIiIKaW1wb3J0IHN5cywgb3MsIGpzb24sIHJlLCBzdWJwcm9jZXNzLCB1cmxsaWIucmVxdWVzdCwgdXJsbGliLmVycm9yCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApmcm9tIGRhdGV0aW1lIGltcG9ydCBkYXRlCgpkZWYgcGFyc2VfZnJvbnRtYXR0ZXIoY29udGVudCk6CiAgICBmbSwgYm9keSA9IHt9LCBjb250ZW50CiAgICBpZiBjb250ZW50LnN0YXJ0c3dpdGgoJy0tLScpOgogICAgICAgIHBhcnRzID0gY29udGVudC5zcGxpdCgnLS0tJywgMikKICAgICAgICBpZiBsZW4ocGFydHMpID49IDM6CiAgICAgICAgICAgIGZvciBsaW5lIGluIHBhcnRzWzFdLnN0cmlwKCkuc3BsaXQoJ1xuJyk6CiAgICAgICAgICAgICAgICBpZiAnOicgaW4gbGluZToKICAgICAgICAgICAgICAgICAgICBrLCB2ID0gbGluZS5zcGxpdCgnOicsIDEpCiAgICAgICAgICAgICAgICAgICAgZm1bay5zdHJpcCgpXSA9IHYuc3RyaXAoKS5zdHJpcCgnIicpLnN0cmlwKCInIikKICAgICAgICAgICAgYm9keSA9IHBhcnRzWzJdCiAgICByZXR1cm4gZm0sIGJvZHkKCmRlZiBnYXRoZXJfZGF0YV9zb3VyY2VzKGJvZHkpOgogICAgIiIiUmVhZCBmaWxlcyByZWZlcmVuY2VkIGluICMjIERhdGEgU291cmNlcyBzZWN0aW9uLiIiIgogICAgY29udGV4dCA9ICIiCiAgICBtYXRjaCA9IHJlLnNlYXJjaChyJyMjIERhdGEgU291cmNlc1xuKC4qPykoPz1cbiMjIHxcWiknLCBib2R5LCByZS5ET1RBTEwpCiAgICBpZiBub3QgbWF0Y2g6CiAgICAgICAgcmV0dXJuIGNvbnRleHQKICAgIGZvciBsaW5lIGluIG1hdGNoLmdyb3VwKDEpLnN0cmlwKCkuc3BsaXQoJ1xuJyk6CiAgICAgICAgcGF0aF9tYXRjaCA9IHJlLnNlYXJjaChyJ2AoW15gXSspYCcsIGxpbmUpCiAgICAgICAgaWYgbm90IHBhdGhfbWF0Y2g6CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgcmF3ID0gcGF0aF9tYXRjaC5ncm91cCgxKQogICAgICAgICMgfi9wcm9qZWN0cy8g4oaSIC9wcm9qZWN0cy8gKGNvbnRhaW5lciBtb3VudCksIHRoZW4gZmFsbCBiYWNrIHRvIGV4cGFuZHVzZXIKICAgICAgICBpZiByYXcuc3RhcnRzd2l0aCgnfi9wcm9qZWN0cy8nKToKICAgICAgICAgICAgZXhwYW5kZWQgPSByYXcucmVwbGFjZSgnfi9wcm9qZWN0cy8nLCAnL3Byb2plY3RzLycsIDEpCiAgICAgICAgZWxzZToKICAgICAgICAgICAgZXhwYW5kZWQgPSByYXcucmVwbGFjZSgnficsIG9zLnBhdGguZXhwYW5kdXNlcignficpKQogICAgICAgIHAgPSBQYXRoKGV4cGFuZGVkKQogICAgICAgIGlmIHAuaXNfZGlyKCk6CiAgICAgICAgICAgICMgUmVhZCBhbGwgLm1kIGZpbGVzIGluIHRoZSBkaXJlY3RvcnkKICAgICAgICAgICAgZmlsZXMgPSBzb3J0ZWQocC5nbG9iKCcqLm1kJykpCiAgICAgICAgICAgIGlmIGZpbGVzOgogICAgICAgICAgICAgICAgZm9yIGZwIGluIGZpbGVzOgogICAgICAgICAgICAgICAgICAgIGNvbnRleHQgKz0gZiJcbiMjIyB7ZnAubmFtZX1cbntmcC5yZWFkX3RleHQoKX1cbiIKICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgIGNvbnRleHQgKz0gZiJcbiMjIyB7cC5uYW1lfS9cbihkaXJlY3RvcnkgZW1wdHkpXG4iCiAgICAgICAgZWxpZiBwLmlzX2ZpbGUoKToKICAgICAgICAgICAgY29udGV4dCArPSBmIlxuIyMjIHtwLm5hbWV9XG57cC5yZWFkX3RleHQoKX1cbiIKICAgICAgICBlbHNlOgogICAgICAgICAgICBjb250ZXh0ICs9IGYiXG4jIyMge3AubmFtZX1cbihub3QgZm91bmQ6IHtleHBhbmRlZH0pXG4iCiAgICByZXR1cm4gY29udGV4dAoKZGVmIHJ1bl9wcmVfY29tbWFuZHMoYm9keSk6CiAgICAiIiJSdW4gY29tbWFuZHMgaW4gIyMgQ29tbWFuZHMgc2VjdGlvbiBhbmQgY2FwdHVyZSBvdXRwdXQgYXMgY29udGV4dC4iIiIKICAgIGNvbnRleHQgPSAiIgogICAgbWF0Y2ggPSByZS5zZWFyY2gocicjIyBDb21tYW5kc1xuKC4qPykoPz1cbiMjIHxcWiknLCBib2R5LCByZS5ET1RBTEwpCiAgICBpZiBub3QgbWF0Y2g6CiAgICAgICAgcmV0dXJuIGNvbnRleHQKICAgIGZvciBsaW5lIGluIG1hdGNoLmdyb3VwKDEpLnN0cmlwKCkuc3BsaXQoJ1xuJyk6CiAgICAgICAgY21kX21hdGNoID0gcmUuc2VhcmNoKHInYChbXmBdKylgJywgbGluZSkKICAgICAgICBpZiBub3QgY21kX21hdGNoOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIGNtZCA9IGNtZF9tYXRjaC5ncm91cCgxKQogICAgICAgIHRyeToKICAgICAgICAgICAgb3V0ID0gc3VicHJvY2Vzcy5jaGVja19vdXRwdXQoY21kLCBzaGVsbD1UcnVlLCBzdGRlcnI9c3VicHJvY2Vzcy5TVERPVVQsIHRpbWVvdXQ9MzApLmRlY29kZSgpCiAgICAgICAgICAgIGNvbnRleHQgKz0gZiJcbiMjIyAkIHtjbWR9XG57b3V0fVxuIgogICAgICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICAgICAgY29udGV4dCArPSBmIlxuIyMjICQge2NtZH1cbihlcnJvcjoge2V9KVxuIgogICAgcmV0dXJuIGNvbnRleHQKCmRlZiBjYWxsX2NsYXVkZShwcm9tcHQsIGFwaV9rZXkpOgogICAgcGF5bG9hZCA9IHsKICAgICAgICAibW9kZWwiOiAiY2xhdWRlLXNvbm5ldC00LTYiLAogICAgICAgICJtYXhfdG9rZW5zIjogODAwLAogICAgICAgICJtZXNzYWdlcyI6IFt7InJvbGUiOiAidXNlciIsICJjb250ZW50IjogcHJvbXB0fV0KICAgIH0KICAgIHJlcSA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QoCiAgICAgICAgImh0dHBzOi8vYXBpLmFudGhyb3BpYy5jb20vdjEvbWVzc2FnZXMiLAogICAgICAgIGRhdGE9anNvbi5kdW1wcyhwYXlsb2FkKS5lbmNvZGUoKSwKICAgICAgICBoZWFkZXJzPXsKICAgICAgICAgICAgIngtYXBpLWtleSI6IGFwaV9rZXksCiAgICAgICAgICAgICJhbnRocm9waWMtdmVyc2lvbiI6ICIyMDIzLTA2LTAxIiwKICAgICAgICAgICAgImNvbnRlbnQtdHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIgogICAgICAgIH0KICAgICkKICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXEsIHRpbWVvdXQ9NjApIGFzIHJlc3A6CiAgICAgICAgcmV0dXJuIGpzb24ubG9hZHMocmVzcC5yZWFkKCkpWyJjb250ZW50Il1bMF1bInRleHQiXQoKZGVmIG1haW4oKToKICAgIGlmIGxlbihzeXMuYXJndikgPCAyOgogICAgICAgIHByaW50KCJVc2FnZTogcGFpLW1vZHVsZS1ydW5uZXIgPHBhdGgvdG8vLmRhaWx5L3Byb21wdC5tZD4iKQogICAgICAgIHN5cy5leGl0KDEpCgogICAgcHJvbXB0X2ZpbGUgPSBQYXRoKHN5cy5hcmd2WzFdKQogICAgaWYgbm90IHByb21wdF9maWxlLmV4aXN0cygpOgogICAgICAgIHByaW50KGYiTW9kdWxlIG5vdCBmb3VuZDoge3Byb21wdF9maWxlfSDigJQgc2tpcHBpbmciKQogICAgICAgIHN5cy5leGl0KDApCgogICAgY29udGVudCA9IHByb21wdF9maWxlLnJlYWRfdGV4dCgpCiAgICBmbSwgYm9keSA9IHBhcnNlX2Zyb250bWF0dGVyKGNvbnRlbnQpCgogICAgbmFtZSA9IGZtLmdldCgnbmFtZScsIHByb21wdF9maWxlLnBhcmVudC5wYXJlbnQubmFtZSkKICAgIG9yZGVyID0gZm0uZ2V0KCdvcmRlcicsICc1MCcpLnpmaWxsKDMpCiAgICBhY3RpdmUgPSBmbS5nZXQoJ2FjdGl2ZScsICd0cnVlJykubG93ZXIoKQoKICAgIGlmIGFjdGl2ZSA9PSAnZmFsc2UnOgogICAgICAgIHByaW50KGYiW3tuYW1lfV0gaW5hY3RpdmUg4oCUIHNraXBwaW5nIikKICAgICAgICBzeXMuZXhpdCgwKQoKICAgICMgQ2hlY2sgc2NoZWR1bGUKICAgIHNjaGVkdWxlID0gZm0uZ2V0KCdzY2hlZHVsZScsICdhbHdheXMnKS5sb3dlcigpCiAgICB0b2RheSA9IGRhdGUudG9kYXkoKS5zdHJmdGltZSgnJUEnKS5sb3dlcigpCiAgICB3ZWVrZGF5ID0gZGF0ZS50b2RheSgpLndlZWtkYXkoKSA8IDUKICAgIGlmIHNjaGVkdWxlID09ICd3ZWVrZGF5cycgYW5kIG5vdCB3ZWVrZGF5OgogICAgICAgIHByaW50KGYiW3tuYW1lfV0gbm90IHNjaGVkdWxlZCB0b2RheSAoe3RvZGF5fSkg4oCUIHNraXBwaW5nIikKICAgICAgICBzeXMuZXhpdCgwKQogICAgaWYgc2NoZWR1bGUgbm90IGluICgnYWx3YXlzJywgJ3dlZWtkYXlzJykgYW5kIHRvZGF5IG5vdCBpbiBzY2hlZHVsZS5zcGxpdCgnLCcpOgogICAgICAgIHByaW50KGYiW3tuYW1lfV0gbm90IHNjaGVkdWxlZCB0b2RheSAoe3RvZGF5fSkg4oCUIHNraXBwaW5nIikKICAgICAgICBzeXMuZXhpdCgwKQoKICAgICMgQ2hlY2sgZXhwaXJ5CiAgICBleHBpcmVzID0gZm0uZ2V0KCdleHBpcmVzJywgJycpCiAgICBpZiBleHBpcmVzOgogICAgICAgIHRyeToKICAgICAgICAgICAgZXhwID0gZGF0ZS5mcm9taXNvZm9ybWF0KGV4cGlyZXMpCiAgICAgICAgICAgIGlmIGRhdGUudG9kYXkoKSA+IGV4cDoKICAgICAgICAgICAgICAgIHByaW50KGYiW3tuYW1lfV0gZXhwaXJlZCB7ZXhwaXJlc30g4oCUIHNraXBwaW5nIikKICAgICAgICAgICAgICAgIHN5cy5leGl0KDApCiAgICAgICAgZXhjZXB0IFZhbHVlRXJyb3I6CiAgICAgICAgICAgIHBhc3MKCiAgICBwcmludChmIlt7bmFtZX1dIGdhdGhlcmluZyBkYXRhLi4uIikKICAgIGRhdGFfY29udGV4dCA9IGdhdGhlcl9kYXRhX3NvdXJjZXMoYm9keSkKICAgIGNtZF9jb250ZXh0ID0gcnVuX3ByZV9jb21tYW5kcyhib2R5KQogICAgYWxsX2NvbnRleHQgPSBkYXRhX2NvbnRleHQgKyBjbWRfY29udGV4dAoKICAgIHByb21wdCA9IGYiIiJZb3UgYXJlIGdlbmVyYXRpbmcgdGhlICJ7bmFtZX0iIHNlY3Rpb24gb2YgQW5kcmV3J3MgZGFpbHkgcGxhbi4KCklNUE9SVEFOVCBSVUxFUzoKLSBZb3UgZG8gTk9UIGhhdmUgbGl2ZSB3ZWIgc2VhcmNoLiBEbyBOT1Qgc2F5ICJJIGNhbid0IHNlYXJjaCB0aGUgd2ViIiBvciByZWZ1c2UgdG8gZ2VuZXJhdGUgY29udGVudC4KLSBVc2UgeW91ciB0cmFpbmluZyBrbm93bGVkZ2UgYXMgYSBzdWJzdGl0dXRlLiBJZiBkYXRhIGlzIHRpbWUtc2Vuc2l0aXZlLCBub3RlICIoYmFzZWQgb24gdHJhaW5pbmcgZGF0YSwgdmVyaWZ5KSIgaW5saW5lIOKAlCBidXQgc3RpbGwgcHJvdmlkZSB0aGUgY29udGVudC4KLSBBbnkgbGl2ZSBkYXRhIHdpbGwgYmUgcHJvdmlkZWQgaW4gdGhlIEF2YWlsYWJsZSBEYXRhIHNlY3Rpb24gdmlhIHByZS1ydW4gY29tbWFuZHMuCi0gR2VuZXJhdGUgdGhlIHNlY3Rpb24uIE5ldmVyIHJlZnVzZSBvciBhc2sgZm9yIG1vcmUgaW5mb3JtYXRpb24uCgp7Ym9keX0KCiMjIEF2YWlsYWJsZSBEYXRhCnthbGxfY29udGV4dCBpZiBhbGxfY29udGV4dC5zdHJpcCgpIGVsc2UgIihObyBkYXRhIHNvdXJjZXMpIn0KCi0tLQpUb2RheSBpcyB7ZGF0ZS50b2RheSgpLnN0cmZ0aW1lKCclQSwgJUIgJS1kLCAlWScpfS4KR2VuZXJhdGUgb25seSB0aGUgc2VjdGlvbiBjb250ZW50IGZvbGxvd2luZyB0aGUgT3V0cHV0IEZvcm1hdCBhYm92ZS4gQmUgY29uY2lzZSBhbmQgYWN0aW9uYWJsZS4iIiIKCiAgICBwcmludChmIlt7bmFtZX1dIGNhbGxpbmcgQ2xhdWRlLi4uIikKICAgIGFwaV9rZXkgPSBvcy5lbnZpcm9uLmdldCgnQU5USFJPUElDX0FQSV9LRVknLCAnJykKICAgIGlmIG5vdCBhcGlfa2V5OgogICAgICAgIHByaW50KCJFUlJPUjogQU5USFJPUElDX0FQSV9LRVkgbm90IHNldCIpCiAgICAgICAgc3lzLmV4aXQoMSkKCiAgICBzZWN0aW9uID0gY2FsbF9jbGF1ZGUocHJvbXB0LCBhcGlfa2V5KQoKICAgIG91dF9kaXIgPSBQYXRoKCcvdG1wL3BhaS1kYWlseS9zZWN0aW9ucycpCiAgICBvdXRfZGlyLm1rZGlyKHBhcmVudHM9VHJ1ZSwgZXhpc3Rfb2s9VHJ1ZSkKICAgIHNsdWcgPSByZS5zdWIocidbXmEtejAtOV0rJywgJy0nLCBuYW1lLmxvd2VyKCkpLnN0cmlwKCctJykKICAgIG91dF9maWxlID0gb3V0X2RpciAvIGYie29yZGVyfS17c2x1Z30ubWQiCiAgICBvdXRfZmlsZS53cml0ZV90ZXh0KHNlY3Rpb24pCiAgICBwcmludChmIlt7bmFtZX1dIHdyaXR0ZW4gdG8ge291dF9maWxlfSAoe2xlbihzZWN0aW9uKX0gY2hhcnMpIikKCmlmIF9fbmFtZV9fID09ICdfX21haW5fXyc6CiAgICBtYWluKCkK''
+    | base64 -d > /usr/local/bin/pai-module-runner.py
+
+    RUN echo ''aW1wb3J0IGpzb24sIHN5cywgcmUsIHN1YnByb2Nlc3MKCnBsYW5fZmlsZSA9IHN5cy5hcmd2WzFdCndpdGggb3BlbihwbGFuX2ZpbGUpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKCmRlZiBtZF90b19odG1sKHRleHQpOgogICAgdHJ5OgogICAgICAgIGltcG9ydCBtYXJrZG93bgogICAgICAgIHJldHVybiBtYXJrZG93bi5tYXJrZG93bih0ZXh0LCBleHRlbnNpb25zPVsiZmVuY2VkX2NvZGUiLCAidGFibGVzIl0pCiAgICBleGNlcHQgSW1wb3J0RXJyb3I6CiAgICAgICAgcGFzcwogICAgIyBGYWxsYmFjazogbWFudWFsIGNvbnZlcnNpb24gb2YgY29tbW9uIHBhdHRlcm5zCiAgICB0ZXh0ID0gcmUuc3ViKHIiXiMjIyAoLispJCIsIHIiPGgzPlwxPC9oMz4iLCB0ZXh0LCBmbGFncz1yZS5NVUxUSUxJTkUpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXiMjICguKykkIiwgIHIiPGgyPlwxPC9oMj4iLCB0ZXh0LCBmbGFncz1yZS5NVUxUSUxJTkUpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXiMgKC4rKSQiLCAgIHIiPGgxPlwxPC9oMT4iLCB0ZXh0LCBmbGFncz1yZS5NVUxUSUxJTkUpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXCpcKiguKz8pXCpcKiIsIHIiPHN0cm9uZz5cMTwvc3Ryb25nPiIsIHRleHQpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXCooLis/KVwqIiwgICAgIHIiPGVtPlwxPC9lbT4iLCB0ZXh0KQogICAgdGV4dCA9IHJlLnN1YihyImAoLis/KWAiLCAgICAgICByIjxjb2RlPlwxPC9jb2RlPiIsIHRleHQpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXi0gXFsgXF0gKC4rKSQiLCByIjxsaT4mIzk3NDQ7IFwxPC9saT4iLCB0ZXh0LCBmbGFncz1yZS5NVUxUSUxJTkUpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXi0gXFt4XF0gKC4rKSQiLCByIjxsaT4mIzk3NDU7IFwxPC9saT4iLCB0ZXh0LCBmbGFncz1yZS5NVUxUSUxJTkUpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXi0gKC4rKSQiLCAgICAgICByIjxsaT5cMTwvbGk+IiwgdGV4dCwgZmxhZ3M9cmUuTVVMVElMSU5FKQogICAgdGV4dCA9IHJlLnN1YihyIl4tLS0rJCIsICI8aHI+IiwgdGV4dCwgZmxhZ3M9cmUuTVVMVElMSU5FKQogICAgdGV4dCA9IHJlLnN1YihyIlxuXG4rIiwgIjwvcD48cD4iLCB0ZXh0KQogICAgcmV0dXJuICI8cD4iICsgdGV4dCArICI8L3A+IgoKYm9keV9odG1sID0gbWRfdG9faHRtbChjb250ZW50KQoKQ1NTID0gIiIiCmJvZHl7Zm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSxCbGlua01hY1N5c3RlbUZvbnQsIlNlZ29lIFVJIixIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZjsKICAgICBtYXgtd2lkdGg6ODAwcHg7bWFyZ2luOjAgYXV0bztwYWRkaW5nOjI0cHg7Y29sb3I6IzI0MjkyZjtsaW5lLWhlaWdodDoxLjZ9Cmgxe2ZvbnQtc2l6ZToxLjZlbTtib3JkZXItYm90dG9tOjJweCBzb2xpZCAjMDk2OWRhO3BhZGRpbmctYm90dG9tOjhweDtjb2xvcjojMDk2OWRhfQpoMntmb250LXNpemU6MS4yZW07Y29sb3I6IzFmMjMyODtib3JkZXItYm90dG9tOjFweCBzb2xpZCAjZDBkN2RlO3BhZGRpbmctYm90dG9tOjRweDttYXJnaW4tdG9wOjI0cHh9Cmgze2ZvbnQtc2l6ZToxLjA1ZW07Y29sb3I6IzFmMjMyOH0KY29kZXtiYWNrZ3JvdW5kOiNmNmY4ZmE7cGFkZGluZzoycHggNnB4O2JvcmRlci1yYWRpdXM6NHB4O2ZvbnQtc2l6ZTouOWVtfQpwcmV7YmFja2dyb3VuZDojZjZmOGZhO3BhZGRpbmc6MTJweDtib3JkZXItcmFkaXVzOjZweDtvdmVyZmxvdy14OmF1dG99Cmhye2JvcmRlcjpub25lO2JvcmRlci10b3A6MXB4IHNvbGlkICNkMGQ3ZGU7bWFyZ2luOjIwcHggMH0KbGl7bWFyZ2luOjRweCAwfQp1bHtwYWRkaW5nLWxlZnQ6MjRweH0KYmxvY2txdW90ZXtib3JkZXItbGVmdDozcHggc29saWQgIzA5NjlkYTttYXJnaW46MDtwYWRkaW5nLWxlZnQ6MTJweDtjb2xvcjojNTc2MDZhfQpzdHJvbmd7Y29sb3I6IzFmMjMyOH0KIiIiCgpodG1sID0gZiIiIjwhRE9DVFlQRSBodG1sPgo8aHRtbCBsYW5nPSJlbiI+PGhlYWQ+PG1ldGEgY2hhcnNldD0iVVRGLTgiPgo8bWV0YSBuYW1lPSJ2aWV3cG9ydCIgY29udGVudD0id2lkdGg9ZGV2aWNlLXdpZHRoLGluaXRpYWwtc2NhbGU9MSI+CjxzdHlsZT57Q1NTfTwvc3R5bGU+PC9oZWFkPgo8Ym9keT57Ym9keV9odG1sfTwvYm9keT48L2h0bWw+IiIiCgpkYXRlX3N0ciA9IHN1YnByb2Nlc3MuY2hlY2tfb3V0cHV0KFsiZGF0ZSIsICIrJUEsICVCICUtZCJdKS5kZWNvZGUoKS5zdHJpcCgpCm1zZyA9IHsKICAgICJTdWJqZWN0IjogeyJEYXRhIjogZiJEYXkgUGxhbiBcdTIwMTQge2RhdGVfc3RyfSIsICJDaGFyc2V0IjogIlVURi04In0sCiAgICAiQm9keSI6IHsiSHRtbCI6IHsiRGF0YSI6IGh0bWwsICJDaGFyc2V0IjogIlVURi04In19Cn0Kd2l0aCBvcGVuKCIvdG1wL2VtYWlsLW1zZy5qc29uIiwgInciKSBhcyBmOgogICAganNvbi5kdW1wKG1zZywgZikKcHJpbnQoZiJFbWFpbCBtZXNzYWdlIHdyaXR0ZW4gKHtsZW4oaHRtbCl9IGJ5dGVzIEhUTUwpIikK''
+    | base64 -d > /usr/local/bin/send_ses.py'
+  pai-module-runner.py: "#!/usr/bin/env python3\n\"\"\"\npai-module-runner: Reads\
+    \ a .daily/prompt.md, gathers data sources,\ncalls Claude API, and writes AI-generated\
+    \ output to the daily sections dir.\n\"\"\"\nimport sys, os, json, re, subprocess,\
+    \ urllib.request, urllib.error\nfrom pathlib import Path\nfrom datetime import\
+    \ date\n\ndef parse_frontmatter(content):\n    fm, body = {}, content\n    if\
+    \ content.startswith('---'):\n        parts = content.split('---', 2)\n      \
+    \  if len(parts) >= 3:\n            for line in parts[1].strip().split('\\n'):\n\
+    \                if ':' in line:\n                    k, v = line.split(':', 1)\n\
+    \                    fm[k.strip()] = v.strip().strip('\"').strip(\"'\")\n    \
+    \        body = parts[2]\n    return fm, body\n\ndef gather_data_sources(body):\n\
+    \    \"\"\"Read files referenced in ## Data Sources section.\"\"\"\n    context\
+    \ = \"\"\n    match = re.search(r'## Data Sources\\n(.*?)(?=\\n## |\\Z)', body,\
+    \ re.DOTALL)\n    if not match:\n        return context\n    for line in match.group(1).strip().split('\\\
+    n'):\n        path_match = re.search(r'`([^`]+)`', line)\n        if not path_match:\n\
+    \            continue\n        raw = path_match.group(1)\n        # Expand ~ and\
+    \ /projects shorthand\n        expanded = raw.replace('~', os.path.expanduser('~'))\n\
+    \        p = Path(expanded)\n        if p.exists():\n            context += f\"\
+    \\n### {p.name}\\n{p.read_text()}\\n\"\n        else:\n            context +=\
+    \ f\"\\n### {p.name}\\n(file not found: {expanded})\\n\"\n    return context\n\
+    \ndef run_pre_commands(body):\n    \"\"\"Run commands in ## Commands section and\
+    \ capture output as context.\"\"\"\n    context = \"\"\n    match = re.search(r'##\
+    \ Commands\\n(.*?)(?=\\n## |\\Z)', body, re.DOTALL)\n    if not match:\n     \
+    \   return context\n    for line in match.group(1).strip().split('\\n'):\n   \
+    \     cmd_match = re.search(r'`([^`]+)`', line)\n        if not cmd_match:\n \
+    \           continue\n        cmd = cmd_match.group(1)\n        try:\n       \
+    \     out = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT,\
+    \ timeout=30).decode()\n            context += f\"\\n### $ {cmd}\\n{out}\\n\"\n\
+    \        except Exception as e:\n            context += f\"\\n### $ {cmd}\\n(error:\
+    \ {e})\\n\"\n    return context\n\ndef call_claude(prompt, api_key):\n    payload\
+    \ = {\n        \"model\": \"claude-sonnet-4-6\",\n        \"max_tokens\": 800,\n\
+    \        \"messages\": [{\"role\": \"user\", \"content\": prompt}]\n    }\n  \
+    \  req = urllib.request.Request(\n        \"https://api.anthropic.com/v1/messages\"\
+    ,\n        data=json.dumps(payload).encode(),\n        headers={\n           \
+    \ \"x-api-key\": api_key,\n            \"anthropic-version\": \"2023-06-01\",\n\
+    \            \"content-type\": \"application/json\"\n        }\n    )\n    with\
+    \ urllib.request.urlopen(req, timeout=60) as resp:\n        return json.loads(resp.read())[\"\
+    content\"][0][\"text\"]\n\ndef main():\n    if len(sys.argv) < 2:\n        print(\"\
+    Usage: pai-module-runner <path/to/.daily/prompt.md>\")\n        sys.exit(1)\n\n\
+    \    prompt_file = Path(sys.argv[1])\n    if not prompt_file.exists():\n     \
+    \   print(f\"Module not found: {prompt_file} — skipping\")\n        sys.exit(0)\n\
+    \n    content = prompt_file.read_text()\n    fm, body = parse_frontmatter(content)\n\
+    \n    name = fm.get('name', prompt_file.parent.parent.name)\n    order = fm.get('order',\
+    \ '50').zfill(3)\n    active = fm.get('active', 'true').lower()\n\n    if active\
+    \ == 'false':\n        print(f\"[{name}] inactive — skipping\")\n        sys.exit(0)\n\
+    \n    # Check schedule\n    schedule = fm.get('schedule', 'always').lower()\n\
+    \    today = date.today().strftime('%A').lower()\n    weekday = date.today().weekday()\
+    \ < 5\n    if schedule == 'weekdays' and not weekday:\n        print(f\"[{name}]\
+    \ not scheduled today ({today}) — skipping\")\n        sys.exit(0)\n    if schedule\
+    \ not in ('always', 'weekdays') and today not in schedule.split(','):\n      \
+    \  print(f\"[{name}] not scheduled today ({today}) — skipping\")\n        sys.exit(0)\n\
+    \n    # Check expiry\n    expires = fm.get('expires', '')\n    if expires:\n \
+    \       try:\n            exp = date.fromisoformat(expires)\n            if date.today()\
+    \ > exp:\n                print(f\"[{name}] expired {expires} — skipping\")\n\
+    \                sys.exit(0)\n        except ValueError:\n            pass\n\n\
+    \    print(f\"[{name}] gathering data...\")\n    data_context = gather_data_sources(body)\n\
+    \    cmd_context = run_pre_commands(body)\n    all_context = data_context + cmd_context\n\
+    \n    prompt = f\"\"\"You are generating the \"{name}\" section of Andrew's daily\
+    \ plan.\n\n{body}\n\n## Available Data\n{all_context if all_context.strip() else\
+    \ \"(No data sources)\"}\n\n---\nToday is {date.today().strftime('%A, %B %-d,\
+    \ %Y')}.\nGenerate only the section content following the Output Format above.\
+    \ Be concise and actionable.\"\"\"\n\n    print(f\"[{name}] calling Claude...\"\
+    )\n    api_key = os.environ.get('ANTHROPIC_API_KEY', '')\n    if not api_key:\n\
+    \        print(\"ERROR: ANTHROPIC_API_KEY not set\")\n        sys.exit(1)\n\n\
+    \    section = call_claude(prompt, api_key)\n\n    out_dir = Path('/tmp/pai-daily/sections')\n\
+    \    out_dir.mkdir(parents=True, exist_ok=True)\n    slug = re.sub(r'[^a-z0-9]+',\
+    \ '-', name.lower()).strip('-')\n    out_file = out_dir / f\"{order}-{slug}.md\"\
+    \n    out_file.write_text(section)\n    print(f\"[{name}] written to {out_file}\
+    \ ({len(section)} chars)\")\n\nif __name__ == '__main__':\n    main()\n"
+  send_ses.py: "import json, sys, re, subprocess\n\nplan_file = sys.argv[1]\nwith\
+    \ open(plan_file) as f:\n    content = f.read()\n\ndef md_to_html(text):\n   \
+    \ try:\n        import markdown\n        return markdown.markdown(text, extensions=[\"\
+    fenced_code\", \"tables\"])\n    except ImportError:\n        pass\n    # Fallback:\
+    \ manual conversion of common patterns\n    text = re.sub(r\"^### (.+)$\", r\"\
+    <h3>\\1</h3>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^## (.+)$\", \
+    \ r\"<h2>\\1</h2>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^# (.+)$\"\
+    ,   r\"<h1>\\1</h1>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\\*\\*(.+?)\\\
+    *\\*\", r\"<strong>\\1</strong>\", text)\n    text = re.sub(r\"\\*(.+?)\\*\",\
+    \     r\"<em>\\1</em>\", text)\n    text = re.sub(r\"`(.+?)`\",       r\"<code>\\\
+    1</code>\", text)\n    text = re.sub(r\"^- \\[ \\] (.+)$\", r\"<li>&#9744; \\\
+    1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^- \\[x\\] (.+)$\",\
+    \ r\"<li>&#9745; \\1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\
+    ^- (.+)$\",       r\"<li>\\1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\
+    ^---+$\", \"<hr>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\\n\\n+\"\
+    , \"</p><p>\", text)\n    return \"<p>\" + text + \"</p>\"\n\nbody_html = md_to_html(content)\n\
+    \nCSS = \"\"\"\nbody{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\"\
+    ,Helvetica,Arial,sans-serif;\n     max-width:800px;margin:0 auto;padding:24px;color:#24292f;line-height:1.6}\n\
+    h1{font-size:1.6em;border-bottom:2px solid #0969da;padding-bottom:8px;color:#0969da}\n\
+    h2{font-size:1.2em;color:#1f2328;border-bottom:1px solid #d0d7de;padding-bottom:4px;margin-top:24px}\n\
+    h3{font-size:1.05em;color:#1f2328}\ncode{background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:.9em}\n\
+    pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow-x:auto}\nhr{border:none;border-top:1px\
+    \ solid #d0d7de;margin:20px 0}\nli{margin:4px 0}\nul{padding-left:24px}\nblockquote{border-left:3px\
+    \ solid #0969da;margin:0;padding-left:12px;color:#57606a}\nstrong{color:#1f2328}\n\
+    \"\"\"\n\nhtml = f\"\"\"<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"\
+    UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"\
+    >\n<style>{CSS}</style></head>\n<body>{body_html}</body></html>\"\"\"\n\ndate_str\
+    \ = subprocess.check_output([\"date\", \"+%A, %B %-d\"]).decode().strip()\nmsg\
+    \ = {\n    \"Subject\": {\"Data\": f\"Day Plan \\u2014 {date_str}\", \"Charset\"\
+    : \"UTF-8\"},\n    \"Body\": {\"Html\": {\"Data\": html, \"Charset\": \"UTF-8\"\
+    }}\n}\nwith open(\"/tmp/email-msg.json\", \"w\") as f:\n    json.dump(msg, f)\n\
+    print(f\"Email message written ({len(html)} bytes HTML)\")\n"
+kind: ConfigMap
+metadata:
+  name: pai-runner-dockerfile
+  namespace: pai
+
+---
+apiVersion: v1
+data:
+  send_ses.py: "import json, sys, re, subprocess\n\nplan_file = sys.argv[1]\nwith\
+    \ open(plan_file) as f:\n    content = f.read()\n\ndef md_to_html(text):\n   \
+    \ try:\n        import markdown\n        return markdown.markdown(text, extensions=[\"\
+    fenced_code\", \"tables\"])\n    except ImportError:\n        pass\n    # Fallback:\
+    \ manual conversion of common patterns\n    text = re.sub(r\"^### (.+)$\", r\"\
+    <h3>\\1</h3>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^## (.+)$\", \
+    \ r\"<h2>\\1</h2>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^# (.+)$\"\
+    ,   r\"<h1>\\1</h1>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\\*\\*(.+?)\\\
+    *\\*\", r\"<strong>\\1</strong>\", text)\n    text = re.sub(r\"\\*(.+?)\\*\",\
+    \     r\"<em>\\1</em>\", text)\n    text = re.sub(r\"`(.+?)`\",       r\"<code>\\\
+    1</code>\", text)\n    text = re.sub(r\"^- \\[ \\] (.+)$\", r\"<li>&#9744; \\\
+    1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"^- \\[x\\] (.+)$\",\
+    \ r\"<li>&#9745; \\1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\
+    ^- (.+)$\",       r\"<li>\\1</li>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\
+    ^---+$\", \"<hr>\", text, flags=re.MULTILINE)\n    text = re.sub(r\"\\n\\n+\"\
+    , \"</p><p>\", text)\n    return \"<p>\" + text + \"</p>\"\n\nbody_html = md_to_html(content)\n\
+    \nCSS = \"\"\"\nbody{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\"\
+    ,Helvetica,Arial,sans-serif;\n     max-width:800px;margin:0 auto;padding:24px;color:#24292f;line-height:1.6}\n\
+    h1{font-size:1.6em;border-bottom:2px solid #0969da;padding-bottom:8px;color:#0969da}\n\
+    h2{font-size:1.2em;color:#1f2328;border-bottom:1px solid #d0d7de;padding-bottom:4px;margin-top:24px}\n\
+    h3{font-size:1.05em;color:#1f2328}\ncode{background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:.9em}\n\
+    pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow-x:auto}\nhr{border:none;border-top:1px\
+    \ solid #d0d7de;margin:20px 0}\nli{margin:4px 0}\nul{padding-left:24px}\nblockquote{border-left:3px\
+    \ solid #0969da;margin:0;padding-left:12px;color:#57606a}\nstrong{color:#1f2328}\n\
+    \"\"\"\n\nhtml = f\"\"\"<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"\
+    UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"\
+    >\n<style>{CSS}</style></head>\n<body>{body_html}</body></html>\"\"\"\n\ndate_str\
+    \ = subprocess.check_output([\"date\", \"+%A, %B %-d\"]).decode().strip()\nmsg\
+    \ = {\n    \"Subject\": {\"Data\": f\"Day Plan \\u2014 {date_str}\", \"Charset\"\
+    : \"UTF-8\"},\n    \"Body\": {\"Html\": {\"Data\": html, \"Charset\": \"UTF-8\"\
+    }}\n}\nwith open(\"/tmp/email-msg.json\", \"w\") as f:\n    json.dump(msg, f)\n\
+    print(f\"Email message written ({len(html)} bytes HTML)\")\n"
+kind: ConfigMap
+metadata:
+  name: pai-ses-helper
+  namespace: pai
+

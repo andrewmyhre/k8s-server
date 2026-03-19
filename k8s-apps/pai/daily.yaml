@@ -1,0 +1,161 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: pai-daily-plan
+  namespace: pai
+spec:
+  concurrencyPolicy: Forbid
+  schedule: 30 6 * * 1-5
+  startingDeadlineSeconds: 300
+  timezone: America/New_York
+  workflowSpec:
+    entrypoint: daily-plan-dag
+    serviceAccountName: pai-workflow-runner
+    templates:
+    - dag:
+        tasks:
+        - name: image-refresh
+          template: refresh-runner-image
+        - dependencies:
+          - image-refresh
+          name: init-workspace
+          template: init-workspace-tpl
+        - dependencies:
+          - init-workspace
+          name: discover-steps
+          template: discover-daily-steps
+        - arguments:
+            parameters:
+            - name: step-name
+              value: '{{item}}'
+          dependencies:
+          - discover-steps
+          name: run-project-steps
+          template: invoke-project-step
+          withParam: '{{tasks.discover-steps.outputs.result}}'
+        - dependencies:
+          - run-project-steps
+          name: aggregate-and-email
+          template: aggregate-email-tpl
+      name: daily-plan-dag
+    - container:
+        args:
+        - --dockerfile=/workspace/Dockerfile
+        - --context=dir:///workspace
+        - --destination=192.168.0.10:30500/pai-runner:latest
+        - --destination=192.168.0.10:30500/pai-runner:{{workflow.creationTimestamp.Y}}{{workflow.creationTimestamp.m}}{{workflow.creationTimestamp.d}}
+        - --insecure
+        - --skip-tls-verify
+        image: gcr.io/kaniko-project/executor:latest
+        volumeMounts:
+        - mountPath: /workspace
+          name: dockerfile-cm
+      name: refresh-runner-image
+    - container:
+        args:
+        - rm -rf /workspace/sections && mkdir -p /workspace/sections
+        command:
+        - sh
+        - -c
+        image: busybox:latest
+        volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+      name: init-workspace-tpl
+    - name: discover-daily-steps
+      script:
+        command:
+        - bash
+        image: 192.168.0.10:30500/pai-runner:latest
+        source: "kubectl get workflowtemplates \\\n  -l pai.io/workflow=daily-plan\
+          \ \\\n  -n pai \\\n  -o json | python3 -c \"\nimport json, sys\nitems =\
+          \ json.load(sys.stdin).get('items', [])\nnames = [i['metadata']['name']\
+          \ for i in items]\nprint(json.dumps(names))\n\"\n"
+    - inputs:
+        parameters:
+        - name: step-name
+      name: invoke-project-step
+      script:
+        command:
+        - bash
+        image: 192.168.0.10:30500/pai-runner:latest
+        source: "set -e\nSTEP_NAME=\"{{inputs.parameters.step-name}}\"\necho \"Submitting\
+          \ child workflow for: $STEP_NAME\"\n\nWF_MANIFEST=$(cat <<WFEOF\napiVersion:\
+          \ argoproj.io/v1alpha1\nkind: Workflow\nmetadata:\n  generateName: step-${STEP_NAME}-\n\
+          \  namespace: pai\nspec:\n  serviceAccountName: pai-workflow-runner\n  workflowTemplateRef:\n\
+          \    name: ${STEP_NAME}\n  volumes:\n  - name: workspace\n    hostPath:\n\
+          \      path: /tmp/pai-daily\n      type: DirectoryOrCreate\n  - name: projects\n\
+          \    hostPath:\n      path: /home/andrew/projects\n      type: Directory\n\
+          WFEOF\n)\n\nWF_NAME=$(echo \"$WF_MANIFEST\" | kubectl create -n pai -f -\
+          \ -o jsonpath='{.metadata.name}')\necho \"Submitted: $WF_NAME\"\n\nwhile\
+          \ true; do\n  PHASE=$(kubectl get workflow \"$WF_NAME\" -n pai -o jsonpath='{.status.phase}'\
+          \ 2>/dev/null || echo \"Pending\")\n  echo \"[$STEP_NAME] phase: $PHASE\"\
+          \n  case \"$PHASE\" in\n    Succeeded) echo \"OK $STEP_NAME succeeded\"\
+          ; exit 0 ;;\n    Failed|Error) echo \"FAIL $STEP_NAME failed\"; exit 1 ;;\n\
+          \    *) sleep 5 ;;\n  esac\ndone\n"
+        volumeMounts:
+        - mountPath: /tmp/pai-daily
+          name: workspace
+    - name: aggregate-email-tpl
+      script:
+        command:
+        - bash
+        env:
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: ANTHROPIC_API_KEY
+              name: pai-claude-api-key
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              key: AWS_ACCESS_KEY_ID
+              name: pai-aws-credentials
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: AWS_SECRET_ACCESS_KEY
+              name: pai-aws-credentials
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              key: AWS_DEFAULT_REGION
+              name: pai-aws-credentials
+        image: 192.168.0.10:30500/pai-runner:latest
+        source: "set -e\nSECTIONS_DIR=/workspace/sections\nPLAN_FILE=/workspace/DAY-PLAN.md\n\
+          \necho \"# Day Plan — $(date '+%A, %B %-d, %Y')\" > $PLAN_FILE\necho \"\"\
+          \ >> $PLAN_FILE\n\nfor f in $(ls $SECTIONS_DIR/*.md 2>/dev/null | sort);\
+          \ do\n  cat \"$f\" >> $PLAN_FILE\n  echo -e \"\\n---\\n\" >> $PLAN_FILE\n\
+          done\n\n# Write to projects dir\ncp $PLAN_FILE /projects/DAY-PLAN.md\n\n\
+          # Email via AWS SES\npython3 /tmp/send_ses.py \"$PLAN_FILE\"\naws ses send-email\
+          \ \\\n  --from rik@immutablesoftware.dev \\\n  --destination '{\"ToAddresses\"\
+          :[\"andrew.myhre@gmail.com\"]}' \\\n  --message file:///tmp/email-msg.json\
+          \ \\\n  --region us-east-1\n"
+        volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+        - mountPath: /projects
+          name: projects
+        - mountPath: /tmp/send_ses.py
+          name: ses-helper
+          subPath: send_ses.py
+    volumes:
+    - hostPath:
+        path: /tmp/pai-daily
+        type: DirectoryOrCreate
+      name: workspace
+    - hostPath:
+        path: /home/andrew/projects
+        type: Directory
+      name: projects
+    - hostPath:
+        path: /home/andrew/.claude
+        type: Directory
+      name: claude-home
+    - configMap:
+        name: pai-runner-dockerfile
+      name: dockerfile-cm
+    - configMap:
+        name: pai-ses-helper
+      name: ses-helper
+
