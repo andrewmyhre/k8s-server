@@ -1,0 +1,9 @@
+hostNetwork:
+  enabled: true
+
+containerPort: 4443
+
+args:
+  - --kubelet-insecure-tls
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+  - --secure-port=4443
