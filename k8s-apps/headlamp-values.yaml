@@ -1,0 +1,19 @@
+replicaCount: 1
+
+config:
+  inCluster: true
+  inClusterContextName: "main"
+  sessionTTL: 0
+
+service:
+  type: ClusterIP
+  port: 4466
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - host: headlamp.primera.rodeo
+      paths:
+        - path: /
+          type: Prefix

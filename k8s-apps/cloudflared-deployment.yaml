@@ -1,0 +1,46 @@
+# This file is a template. TUNNEL_ID will be replaced by the install script.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflare-tunnel
+  labels:
+    app: cloudflared
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - "--config"
+            - "/etc/cloudflared/config/config.yaml"
+            - "tunnel"
+            - "run"
+          volumeMounts:
+            - name: credentials
+              mountPath: /etc/cloudflared/creds
+              readOnly: true
+            - name: config
+              mountPath: /etc/cloudflared/config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: credentials
+          secret:
+            secretName: cloudflared-credentials
+        - name: config
+          configMap:
+            name: cloudflared-config
