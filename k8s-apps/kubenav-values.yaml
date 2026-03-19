@@ -1,0 +1,29 @@
+# Skooner (replaces kubenav - kubenav Docker images are no longer publicly available)
+# Chart: christianhuth/skooner
+# Deployed to namespace: kubenav (preserving original namespace)
+
+replicaCount: 1
+
+image:
+  registry: ghcr.io
+  repository: skooner-k8s/skooner
+  tag: "stable"
+
+serviceAccount:
+  create: true
+
+clusterRoleBinding:
+  clusterRole: view
+
+service:
+  type: ClusterIP
+  port: 14122
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: kubenav.primera.rodeo
+      paths:
+        - path: /
+          pathType: Prefix
