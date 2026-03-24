@@ -2,6 +2,88 @@ apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   labels:
+    pai.io/project: ai-services
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-ai-services
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/ai-services/.daily/prompt.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    pai.io/project: wellness
+    pai.io/workflow: daily-plan
+  name: daily-plan-step-wellness-health
+  namespace: pai
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      args:
+      - /projects/wellness/.daily/health.md
+      command:
+      - python3
+      - /usr/local/bin/pai-module-runner.py
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            key: ANTHROPIC_API_KEY
+            name: pai-claude-api-key
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - mountPath: /tmp/pai-daily
+        name: workspace
+      - mountPath: /projects
+        name: projects
+  volumes:
+  - hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+    name: workspace
+  - hostPath:
+      path: /home/andrew/projects
+      type: Directory
+    name: projects
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
     pai.io/project: aws-account
     pai.io/workflow: daily-plan
   name: daily-plan-step-aws-account

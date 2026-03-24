@@ -34,7 +34,12 @@ spec:
           template: invoke-project-step
           withParam: '{{tasks.discover-steps.outputs.result}}'
         - dependencies:
+          - init-workspace
+          name: generate-status
+          template: generate-status-tpl
+        - dependencies:
           - run-project-steps
+          - generate-status
           name: aggregate-and-email
           template: aggregate-email-tpl
       name: daily-plan-dag
@@ -96,6 +101,76 @@ spec:
         volumeMounts:
         - mountPath: /tmp/pai-daily
           name: workspace
+    - name: generate-status-tpl
+      script:
+        command:
+        - python3
+        image: 192.168.0.10:30500/pai-runner:latest
+        source: |
+          import os, re
+          from pathlib import Path
+          from datetime import date
+
+          PROJECTS_DIR = Path('/projects')
+          OUT_FILE = Path('/tmp/pai-daily/sections/000-project-status.md')
+
+          project_data = []
+          for daily_dir in sorted(PROJECTS_DIR.glob('*/.daily')):
+              for prompt_file in sorted(daily_dir.glob('*.md')):
+                  content = prompt_file.read_text()
+                  fm = {}
+                  if content.startswith('---'):
+                      parts = content.split('---', 2)
+                      if len(parts) >= 3:
+                          for line in parts[1].strip().split('\n'):
+                              if ':' in line:
+                                  k, v = line.split(':', 1)
+                                  fm[k.strip()] = v.strip().strip('"').strip("'")
+                  name = fm.get('name', daily_dir.parent.name)
+                  try:
+                      order = int(fm.get('order', '50'))
+                  except ValueError:
+                      order = 50
+                  active = fm.get('active', 'true').lower() == 'true'
+                  expires = fm.get('expires', '')
+                  if expires:
+                      try:
+                          from datetime import date as d
+                          if d.today() > d.fromisoformat(expires):
+                              active = False
+                      except ValueError:
+                          pass
+                  if not active or order >= 50:
+                      continue
+                  project_dir = daily_dir.parent
+                  status_line = ''
+                  for fname in ('PROJECT.md', 'ROADMAP.md', 'README.md'):
+                      p = project_dir / fname
+                      if p.exists():
+                          for line in p.read_text().split('\n'):
+                              if '**Status:**' in line or 'Status:' in line:
+                                  status_line = re.sub(r'\*\*Status:\*\*\s*', '', line).strip()
+                                  status_line = re.sub(r'Status:\s*', '', status_line).strip()
+                                  break
+                          if status_line:
+                              break
+                  project_data.append((order, name, status_line or '—'))
+
+          project_data.sort()
+          today = date.today().strftime('%A, %B %-d, %Y')
+          lines = [f'## Active Projects — {today}\n']
+          lines.append('| Project | Status |')
+          lines.append('|---------|--------|')
+          for _, name, status in project_data:
+              lines.append(f'| {name} | {status} |')
+          lines.append('')
+          OUT_FILE.write_text('\n'.join(lines))
+          print(f'Status table written: {len(project_data)} projects')
+        volumeMounts:
+        - mountPath: /tmp/pai-daily
+          name: workspace
+        - mountPath: /projects
+          name: projects
     - name: aggregate-email-tpl
       script:
         command:
