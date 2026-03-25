@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: daily-plan-step-k8s-server
+  namespace: pai
+  labels:
+    pai.io/workflow: daily-plan
+    pai.io/project: k8s-server
+spec:
+  entrypoint: run
+  templates:
+  - name: run
+    script:
+      image: 192.168.0.10:30500/pai-runner:latest
+      imagePullPolicy: Always
+      command: [python3, /usr/local/bin/pai-module-runner.py]
+      args: [/projects/k8s-server/.daily/prompt.md]
+      env:
+      - name: ANTHROPIC_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: pai-claude-api-key
+            key: ANTHROPIC_API_KEY
+      volumeMounts:
+      - name: workspace
+        mountPath: /tmp/pai-daily
+      - name: projects
+        mountPath: /projects
+  volumes:
+  - name: workspace
+    hostPath:
+      path: /tmp/pai-daily
+      type: DirectoryOrCreate
+  - name: projects
+    hostPath:
+      path: /home/andrew/projects
+      type: Directory
