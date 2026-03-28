@@ -57,6 +57,10 @@ grafana:
     - name: alerting-provisioning-source
       secret:
         secretName: grafana-alerting-provisioning
+    # Source: ConfigMap with non-sensitive alert rules
+    - name: alerting-rules
+      configMap:
+        name: grafana-alert-rules
     # Dest: emptyDir populated by init container, read by Grafana at startup
     - name: alerting-provisioning
       emptyDir: {}
@@ -71,10 +75,13 @@ grafana:
       command:
         - sh
         - -c
-        - cp /src/*.yaml /dest/ && echo "Alerting provisioning files copied:"  && ls /dest/
+        - cp /src/*.yaml /dest/ && cp /rules/*.yaml /dest/ && echo "Alerting provisioning files copied:" && ls /dest/
       volumeMounts:
         - name: alerting-provisioning-source
           mountPath: /src
+          readOnly: true
+        - name: alerting-rules
+          mountPath: /rules
           readOnly: true
         - name: alerting-provisioning
           mountPath: /dest
