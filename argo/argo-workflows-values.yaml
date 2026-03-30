@@ -21,6 +21,12 @@ controller:
   workflowNamespaces:
     - argo
     - legal-ingestor
+  workflowDefaults:
+    spec:
+      ttlStrategy:
+        secondsAfterCompletion: 3600
+        secondsAfterSuccess: 3600
+        secondsAfterFailure: 86400
 
 workflow:
   serviceAccount:

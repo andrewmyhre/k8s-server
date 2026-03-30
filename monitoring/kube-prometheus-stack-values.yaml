@@ -28,9 +28,64 @@ grafana:
       - grafana.immutablesoftware.dev
     annotations:
       nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+  # Inject SMTP credentials as env vars (GF_SMTP_USER, GF_SMTP_PASSWORD).
+  # grafana chart key: envFromSecret (single string, not envFrom list).
+  envFromSecret: grafana-alerting-credentials
+
   grafana.ini:
     server:
       root_url: "https://grafana.immutablesoftware.dev"
+    # Amazon SES SMTP relay (us-east-1). Credentials from envFromSecret above.
+    smtp:
+      enabled: true
+      host: email-smtp.us-east-1.amazonaws.com:587
+      user: $__env{GF_SMTP_USER}
+      password: $__env{GF_SMTP_PASSWORD}
+      from_address: alerts@immutablesoftware.dev
+      from_name: Grafana Alerts
+      startTLS_policy: MandatoryStartTLS
+
+  # Grafana 12 alerting provisioning does not support env var substitution in
+  # contact point settings. Strategy: the grafana chart creates an emptyDir at
+  # /etc/grafana/provisioning/alerting/. An init container reads from the
+  # SealedSecret (grafana-alerting-provisioning) and copies the decrypted YAML
+  # files (with real Slack token embedded) into the emptyDir before Grafana starts.
+  # extraContainerVolumes supports raw Kubernetes volume specs (via tpl).
+  # extraVolumes has a limited type list and doesn't handle secret volumes.
+  extraContainerVolumes:
+    # Source: SealedSecret with real Slack token embedded in provisioning YAML
+    - name: alerting-provisioning-source
+      secret:
+        secretName: grafana-alerting-provisioning
+    # Source: ConfigMap with non-sensitive alert rules
+    - name: alerting-rules
+      configMap:
+        name: grafana-alert-rules
+    # Dest: emptyDir populated by init container, read by Grafana at startup
+    - name: alerting-provisioning
+      emptyDir: {}
+
+  extraVolumeMounts:
+    - name: alerting-provisioning
+      mountPath: /etc/grafana/provisioning/alerting
+
+  extraInitContainers:
+    - name: copy-alerting-provisioning
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - cp /src/*.yaml /dest/ && cp /rules/*.yaml /dest/ && echo "Alerting provisioning files copied:" && ls /dest/
+      volumeMounts:
+        - name: alerting-provisioning-source
+          mountPath: /src
+          readOnly: true
+        - name: alerting-rules
+          mountPath: /rules
+          readOnly: true
+        - name: alerting-provisioning
+          mountPath: /dest
+
   additionalDataSources:
     - name: Loki
       type: loki
