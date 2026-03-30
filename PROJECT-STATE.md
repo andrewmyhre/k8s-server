@@ -4,7 +4,7 @@
 > applications, networking quirks, secrets, monitoring, and known issues. Intended to restore
 > full working context in a new conversation after history is lost.
 >
-> **Last updated:** 2026-03-30
+> **Last updated:** 2026-03-30 (post PR #19 merge)
 
 ---
 
@@ -433,23 +433,18 @@ echo 'd /tmp/tmux-1000 0700 andrew andrew -' | sudo tee /etc/tmpfiles.d/tmux-and
 
 ## 10. Current Git State (2026-03-30)
 
-**Active branch:** `feat/grafana-alerting`
+**Active branch:** `main` (clean — no pending branches)
 
-**Uncommitted changes:**
-- `M argo/argo-workflows-values.yaml` — modified
-- `M k8s-apps/monitoring/grafana-alert-rules.yaml` — modified
+**HEAD commit:** `f4f376d` — feat(grafana): configure unified alerting — Slack + email via SES (#19)
 
-**Recent merged work:**
-- Grafana unified alerting with Slack + email contact points
-- Disk usage alert rule (>85% for 5m)
-- Sealed Secrets controller + all app secrets migrated
-- metrics-server values + Grafana initChownData fix
-- Mullvad VPN documentation + incident report
-- RBAC agent-secret-reader for all app namespaces
-- Cloudflare, Headlamp, KubeNav Helm configs
+**What's on main (recent merges, newest first):**
+- **#19** `feat/grafana-alerting` — Grafana unified alerting (Slack + email), disk usage alert rule, Argo workflow TTL defaults, PROJECT-STATE.md docs
+- **#13** `feat/k8s-apps` — Cloudflare, Headlamp, KubeNav Helm configs
+- **#12** `feat/monitoring-updates` — metrics-server values, Grafana initChownData fix
+- **#14** `docs` — CLAUDE.md, Mullvad VPN config, incident report
+- **#11** `feat/app-secrets-migration` — all app secrets migrated to Sealed Secrets + agent RBAC
 
-**Pending / not yet merged to main:**
-- `feat/grafana-alerting` branch — Grafana alerting setup
+**No pending branches. Working tree clean.**
 
 ---
 
