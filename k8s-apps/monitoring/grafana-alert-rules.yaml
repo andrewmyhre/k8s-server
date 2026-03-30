@@ -23,7 +23,7 @@ data:
                 datasourceUid: prometheus
                 model:
                   editorMode: code
-                  expr: '100 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"} * 100)'
+                  expr: '100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|vfat"} / node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|vfat"} * 100)'
                   instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
@@ -55,8 +55,8 @@ data:
             execErrState: Error
             for: 5m
             annotations:
-              summary: "High disk usage on {{ $labels.instance }}"
-              description: "Root filesystem usage is at {{ printf \"%.1f\" $values.A.Value }}% (threshold: 85%)"
+              summary: "High disk usage on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+              description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is at {{ printf \"%.1f\" $values.A.Value }}% usage (threshold: 85%)"
             labels:
               severity: warning
             isPaused: false
