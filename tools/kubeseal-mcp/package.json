@@ -1,0 +1,16 @@
+{
+  "name": "kubeseal-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for kubeseal — seal Kubernetes secrets without copy-paste",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
