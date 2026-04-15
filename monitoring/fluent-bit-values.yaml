@@ -6,6 +6,14 @@
 #     --namespace monitoring --create-namespace \
 #     --values monitoring/fluent-bit-values.yaml --timeout 5m
 
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
 config:
   service: |
     [SERVICE]

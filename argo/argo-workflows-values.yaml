@@ -16,6 +16,13 @@ server:
     # server mode skips Argo's own login screen — all requests
     # use the server's service account after CF Access validates the session.
     - --auth-mode=server
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
 
 controller:
   workflowNamespaces:
@@ -27,6 +34,13 @@ controller:
         secondsAfterCompletion: 3600
         secondsAfterSuccess: 3600
         secondsAfterFailure: 86400
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 workflow:
   serviceAccount:

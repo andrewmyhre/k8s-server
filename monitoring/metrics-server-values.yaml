@@ -7,3 +7,20 @@ args:
   - --kubelet-insecure-tls
   - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
   - --secure-port=4443
+
+# Single-node cluster with hostNetwork: can't have two pods binding the same port.
+# Kill old before starting new.
+replicas: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

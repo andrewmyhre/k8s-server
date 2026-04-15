@@ -1,0 +1,21 @@
+# Prometheus Pushgateway helm values
+# Chart: prometheus-community/prometheus-pushgateway v3.6.0
+# Namespace: monitoring
+# Upgrade:
+#   helm upgrade prometheus-pushgateway prometheus-community/prometheus-pushgateway \
+#     --namespace monitoring \
+#     --values monitoring/prometheus-pushgateway-values.yaml
+
+serviceMonitor:
+  additionalLabels:
+    release: kube-prometheus-stack
+  enabled: true
+  namespace: monitoring
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
