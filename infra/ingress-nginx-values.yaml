@@ -1,0 +1,22 @@
+# ingress-nginx helm values
+# Chart: ingress-nginx/ingress-nginx v4.14.3
+# Namespace: ingress-nginx
+# Upgrade:
+#   helm upgrade ingress-nginx ingress-nginx/ingress-nginx \
+#     --namespace ingress-nginx \
+#     --values infra/ingress-nginx-values.yaml
+
+controller:
+  allowSnippetAnnotations: true
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30080
+      https: 30443
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

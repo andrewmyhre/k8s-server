@@ -1,0 +1,44 @@
+# Cilium values for sleeper-service (single-node homelab)
+#
+# Installed:  2026-03-02 (helm install my-cilium cilium/cilium --version 1.19.1)
+# Default:    All defaults — no custom values were set at install time
+#
+# FIX APPLIED (2026-04-09):
+#   Cilium was crash-looping (217+ restarts) because it tries to reach the
+#   kube-apiserver via ClusterIP (10.96.0.1:443), which requires Cilium's own
+#   eBPF service NAT to route — a circular dependency that prevents recovery
+#   after a dirty crash. Setting k8sServiceHost/Port bypasses this by pointing
+#   Cilium directly at the kube-apiserver host IP, breaking the circular dep.
+#   See: incidents/2026-04-09-cilium-crashloop-dns-outage-recurrence.md
+
+# Break the circular dependency: use kube-apiserver host IP, not ClusterIP
+k8sServiceHost: 192.168.0.10
+k8sServicePort: 6443
+
+# Resource limits — sized from kubectl top actuals (2026-04-15)
+# Cilium is the CNI — be conservative. OOM here = network outage.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+envoy:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+operator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

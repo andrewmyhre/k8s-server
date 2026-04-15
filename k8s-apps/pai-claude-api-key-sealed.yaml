@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: pai-claude-api-key
+  namespace: pai
+spec:
+  encryptedData:
+    ANTHROPIC_API_KEY: AgAhVpb9CTBO4sI1CJzlt7pF8eJv1QZ72ge7Auhnk4km3XRLrsCifIcyTJ3ypWK3bAp4G8tnOWKI+8BGnnlwF9FPeCCcDlm2rg7hqZ3jnV23ny1FoXkYNmtOKsSxhJ1l5FweDuL2qoEzxtw2owJdmeV4E+SrshDAyd3fFqJAKVC/rwmQsh9P4U3sO7q2y2CqMEUaAdWZvVQrQirrVRxx1Jrw6oyDzfdqiMs4mpIEJBmDM231mu8yT16FZIUf4d8wLwqmhxfHguEAK0t2bdeu07o2INJZpcOnTehuWQxj1Kx/YrAYnsj6SlQGd0x8wVCB4HcHKcMpKukAJ5spvgZjaBqzf4pSU3HJhCMFzDoWdMZUC8dD+21uEtHV9fx11guQjfo2mDeVsbHTvnxfSEE7Im704zEEkwREoL5RRhvchMPfsAzSQR+49xhwBRoEPEZvnrB3PnWJTUaVPogUtYH2+A9Kc6s7tpCSKEpllB9ttitB41lOpos7jcQhV2ikny7nwiLMIfVNyOMsJ32CfiyEQBL4UDKuwmAIkGFX3nBUD0DsWiG3Irp6Ttd8/qZLtM5nY9QB5MpDbtzUiVAQRYXqC/Tj/7iinFYRYM9yNJYdj81BDZ07cDmGhjH1DtMoWn24g+aOFUE/6Y1De4EVAcGe3KuXgwyf/5iJ9Xp01M7cEym7daUJC4EdSjVw6kLm/cAPDwiBdmpgc4VgbR8wUfi51PhDEaJFg3RR8meo4ncCyZBgJww3O4WTZj8CxCiTaR7rJio8q5ktV2g/zHkrojOgRK3CDzuDMO29f7Spcn90cCLTSew5K/+Tio9HlER6f9ilZgC0BzbDNbL42DfFx+Y=
+  template:
+    metadata:
+      name: pai-claude-api-key
+      namespace: pai

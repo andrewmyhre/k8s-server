@@ -17,6 +17,30 @@ grafana:
   # without DAC_OVERRIDE. Data is already owned by UID 472, so skip this.
   initChownData:
     enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  sidecar:
+    dashboards:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    datasources:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
   persistence:
     enabled: true
     storageClassName: local-path
@@ -64,6 +88,10 @@ grafana:
     # Dest: emptyDir populated by init container, read by Grafana at startup
     - name: alerting-provisioning
       emptyDir: {}
+    # Source: SealedSecret with InfluxDB datasource provisioning (password embedded)
+    - name: influxdb-datasource-source
+      secret:
+        secretName: grafana-influxdb-datasource
 
   extraVolumeMounts:
     - name: alerting-provisioning
@@ -76,6 +104,13 @@ grafana:
         - sh
         - -c
         - cp /src/*.yaml /dest/ && cp /rules/*.yaml /dest/ && echo "Alerting provisioning files copied:" && ls /dest/
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
       volumeMounts:
         - name: alerting-provisioning-source
           mountPath: /src
@@ -85,6 +120,39 @@ grafana:
           readOnly: true
         - name: alerting-provisioning
           mountPath: /dest
+    - name: copy-influxdb-datasource
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          # Copy InfluxDB datasource from SealedSecret (has real password embedded)
+          # into the sidecar's datasource emptyDir (sc-datasources-volume).
+          # The sidecar will add Prometheus/Alertmanager/Loki from ConfigMaps.
+          cp /influxdb-src/*.yaml /datasources/
+          echo "InfluxDB datasource provisioning copied:" && ls /datasources/
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+      volumeMounts:
+        - name: influxdb-datasource-source
+          mountPath: /influxdb-src
+          readOnly: true
+        - name: sc-datasources-volume
+          mountPath: /datasources
+
+  # InfluxDB datasource is provisioned separately via SealedSecret +
+  # init container (grafana-influxdb-datasource secret) because Grafana's
+  # env var substitution in secureJsonData is broken in this version.
+  deleteDatasources:
+    - name: Home Assistant (InfluxDB)
+      orgId: 1
+    - name: InfluxDB - Home Assistant
+      orgId: 1
 
   additionalDataSources:
     - name: Loki
@@ -95,6 +163,13 @@ grafana:
 prometheus:
   prometheusSpec:
     retention: 30d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -106,6 +181,13 @@ prometheus:
 
 alertmanager:
   alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
     storage:
       volumeClaimTemplate:
         spec:
@@ -118,5 +200,32 @@ alertmanager:
 kubeStateMetrics:
   enabled: true
 
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
 nodeExporter:
   enabled: true
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
