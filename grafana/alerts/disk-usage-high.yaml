@@ -1,0 +1,66 @@
+# Alert: High Disk Usage
+# Folder:   Infrastructure
+# Severity: warning
+# Fires:    filesystem usage > 85% for 5m
+# Excludes: tmpfs, squashfs, vfat (virtual/readonly filesystems)
+
+uid: disk-usage-high
+title: "High Disk Usage (> 85%)"
+condition: C
+data:
+  - refId: A
+    relativeTimeRange:
+      from: 600
+      to: 0
+    datasourceUid: prometheus
+    model:
+      editorMode: code
+      expr: '100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|vfat"} / node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|vfat"} * 100)'
+      instant: true
+      intervalMs: 1000
+      maxDataPoints: 43200
+      refId: A
+  - refId: B
+    relativeTimeRange:
+      from: 600
+      to: 0
+    datasourceUid: prometheus
+    model:
+      editorMode: code
+      expr: 'node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|vfat"} / 1073741824'
+      instant: true
+      intervalMs: 1000
+      maxDataPoints: 43200
+      refId: B
+  - refId: C
+    datasourceUid: __expr__
+    model:
+      conditions:
+        - evaluator:
+            params:
+              - 85
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+              - A
+          reducer:
+            params: []
+            type: last
+          type: query
+      datasource:
+        type: __expr__
+        uid: __expr__
+      expression: A
+      refId: C
+      type: threshold
+noDataState: NoData
+execErrState: Error
+for: 5m
+annotations:
+  summary: "High disk usage on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+  description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ printf \"%.1f\" $values.A.Value }}% full — {{ printf \"%.1f\" $values.B.Value }} GB free (threshold: 85%)"
+labels:
+  severity: warning
+isPaused: false

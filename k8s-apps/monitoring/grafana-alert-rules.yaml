@@ -28,6 +28,18 @@ data:
                   intervalMs: 1000
                   maxDataPoints: 43200
                   refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|vfat"} / 1073741824'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
               - refId: C
                 datasourceUid: __expr__
                 model:
@@ -56,7 +68,291 @@ data:
             for: 5m
             annotations:
               summary: "High disk usage on {{ $labels.instance }} ({{ $labels.mountpoint }})"
-              description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is at {{ printf \"%.1f\" $values.A.Value }}% usage (threshold: 85%)"
+              description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ printf \"%.1f\" $values.A.Value }}% full — {{ printf \"%.1f\" $values.B.Value }} GB free (threshold: 85%)"
+            labels:
+              severity: warning
+            isPaused: false
+          - uid: cilium-agent-crashloop
+            title: "Cilium Agent Crash-Looping"
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'increase(kube_pod_container_status_restarts_total{container="cilium-agent"}[10m])'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 3
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  refId: C
+                  type: threshold
+            noDataState: OK
+            execErrState: Error
+            for: 1m
+            annotations:
+              summary: "Cilium agent is crash-looping on {{ $labels.node }}"
+              description: "cilium-agent has restarted {{ printf \"%.0f\" $values.A.Value }} times in the last 10 minutes. DNS and cluster networking are at risk."
+            labels:
+              severity: critical
+            isPaused: false
+          - uid: etcd-restarts-high
+            title: "etcd Pod Restarts High"
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'increase(kube_pod_container_status_restarts_total{container="etcd", namespace="kube-system"}[1h])'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 2
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  refId: C
+                  type: threshold
+            noDataState: OK
+            execErrState: Error
+            for: 5m
+            annotations:
+              summary: "etcd is restarting frequently on {{ $labels.node }}"
+              description: "etcd has restarted {{ printf \"%.0f\" $values.A.Value }} times in the last hour. This indicates memory pressure or liveness probe failures."
+            labels:
+              severity: warning
+            isPaused: false
+          - uid: oomkilled-containers
+            title: "Container OOMKilled"
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'increase(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[15m]) > 0'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  refId: C
+                  type: threshold
+            noDataState: OK
+            execErrState: Error
+            for: 1m
+            annotations:
+              summary: "Container {{ $labels.container }} OOMKilled in {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: "Container {{ $labels.container }} in pod {{ $labels.pod }} (namespace {{ $labels.namespace }}) was OOMKilled."
+            labels:
+              severity: warning
+            isPaused: false
+          - uid: etcd-request-timeouts
+            title: "etcd Request Latency High"
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'histogram_quantile(0.99, rate(etcd_request_duration_seconds_bucket[5m]))'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  editorMode: code
+                  expr: 'rate(etcd_server_slow_apply_total[5m])'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.2
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: or
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: ""
+                  refId: C
+                  type: classic_conditions
+            noDataState: OK
+            execErrState: Error
+            for: 5m
+            annotations:
+              summary: "etcd request latency is elevated"
+              description: "etcd 99th percentile request duration exceeds 200ms or slow applies are occurring. This can cause API server timeouts and workflow failures."
+            labels:
+              severity: warning
+            isPaused: false
+      - orgId: 1
+        name: Home Assistant Alerts
+        folder: Home Assistant
+        interval: 1m
+        rules:
+          - uid: plant-moisture-low
+            title: "Low Plant Soil Moisture (< 20%)"
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: influxdb-homeassistant
+                model:
+                  query: "SELECT last(\"value\") FROM \"%\" WHERE \"entity_id\" =~ /soil_moisture$/ AND time > now() - 10m GROUP BY \"entity_id\""
+                  rawQuery: true
+                  refId: A
+                  resultFormat: time_series
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 20
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  refId: C
+                  type: threshold
+            noDataState: NoData
+            execErrState: Error
+            for: 10m
+            annotations:
+              summary: "Low soil moisture: {{ $labels.entity_id }}"
+              description: "{{ $labels.entity_id }} soil moisture is at {{ printf \"%.1f\" $values.B.Value }}% (threshold: 20%)"
             labels:
               severity: warning
             isPaused: false

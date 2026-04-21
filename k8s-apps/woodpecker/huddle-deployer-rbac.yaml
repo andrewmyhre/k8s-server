@@ -1,0 +1,73 @@
+# huddle-deployer
+#
+# ServiceAccount used by the Woodpecker CI pipeline (.woodpecker/build-deploy.yml
+# in andrewmyhre/huddle) to run `helm upgrade` against the `huddle` namespace.
+#
+# Scope rationale (cluster-admin):
+#   The huddle Helm chart (infra/helm/huddle/) installs:
+#     - Namespaced resources in the `huddle` namespace (Deployments, Services,
+#       Ingress, ConfigMaps, Secret)
+#     - A cluster-scoped PersistentVolume (templates/data-pv.yaml)
+#     - ClusterRoles + ClusterRoleBindings for the huddle-agent SA
+#       (templates/agent-rbac.yaml) — including verbs like `escalate` and
+#       `bind` which require the grantor to also hold them.
+#
+#   Granting namespace-admin alone would fail on the PV + cluster-scoped RBAC.
+#   Once we split those out of the chart (follow-up PV migration work), this can
+#   be narrowed to a focused ClusterRole + per-namespace RoleBinding.
+#
+# Token delivery:
+#   A long-lived ServiceAccount token Secret is generated automatically (see
+#   huddle-deployer-token.yaml). That Secret's ca.crt + token are packed into a
+#   kubeconfig and sealed as `woodpecker-huddle-kubeconfig` in the woodpecker
+#   namespace. The pipeline mounts it at /root/.kube/config.
+#
+# This file is part of the homelab repo (/projects/homelab/k8s-apps/woodpecker/).
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: huddle-deployer
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/component: ci-deployer
+    app.kubernetes.io/part-of: woodpecker
+    app.kubernetes.io/target: huddle
+
+---
+# Long-lived API token for the huddle-deployer ServiceAccount.
+# The controller will populate .data.token and .data.ca.crt after apply.
+# This is the documented way to get stable SA tokens in k8s >= 1.24
+# (previously auto-created, now you must request them explicitly).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: huddle-deployer-token
+  namespace: woodpecker
+  annotations:
+    kubernetes.io/service-account.name: huddle-deployer
+  labels:
+    app.kubernetes.io/component: ci-deployer
+    app.kubernetes.io/part-of: woodpecker
+type: kubernetes.io/service-account-token
+
+---
+# Cluster-admin so helm can manage PV + ClusterRoles the chart currently renders.
+# Narrow this once the PV and cluster-scoped RBAC are split out of the chart.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: huddle-deployer-cluster-admin
+  labels:
+    app.kubernetes.io/component: ci-deployer
+    app.kubernetes.io/part-of: woodpecker
+    app.kubernetes.io/target: huddle
+subjects:
+  - kind: ServiceAccount
+    name: huddle-deployer
+    namespace: woodpecker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
