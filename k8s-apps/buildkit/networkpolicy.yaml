@@ -1,0 +1,34 @@
+# Only accept build requests from namespaces that need them.
+# Add new namespaces to ingress.from.namespaceSelector as needed.
+#
+# CNI required: Cilium enforces this policy (confirmed via cluster's Cilium CNI).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: buildkitd-allowlist
+  namespace: buildkit
+spec:
+  podSelector:
+    matchLabels:
+      # Set by `extraSelectorLabels` in values.yaml so the selector is stable
+      # regardless of how the chart's default labels are named.
+      app: buildkitd
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: huddle
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: huddle-test
+        # Woodpecker CI pipeline pods build huddle container images
+        # via this daemon on push to main. See
+        # /projects/homelab/k8s-apps/woodpecker/ for the deployer SA + kubeconfig
+        # that enable the subsequent helm upgrade step.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: woodpecker
+      ports:
+        - port: 1234
+          protocol: TCP
