@@ -1,0 +1,19 @@
+# us-egress-proxy
+
+> HTTP/HTTPS proxy on sleeper-service whose egress bypasses Mullvad VPN, so cluster workloads can reach APIs that block non-US IPs without taking the whole cluster off the VPN.
+
+## Documentation
+
+- [README.md](README.md): Architecture, install steps, verification, operational notes
+
+## Host files (deployed to sleeper-service)
+
+- [host/tinyproxy.conf](host/tinyproxy.conf): tinyproxy config — bound to 192.168.0.10:8888, basic auth, LAN+pod+service CIDR allow list, CONNECT restricted to :443
+- [host/us-egress-proxy-bypass.nft](host/us-egress-proxy-bypass.nft): nftables rule that (a) exempts port 53 from marking so DNS reaches Mullvad's in-tunnel resolver, then (b) tags all other tinyproxy packets with Mullvad's "mole" marks (0x00000f41 / 0x6d6f6c65) so Mullvad routes them outside the tunnel
+- [host/us-egress-proxy-bypass.service](host/us-egress-proxy-bypass.service): systemd unit that loads the nft rule after mullvad-daemon and before tinyproxy.service
+- [host/install.sh](host/install.sh): idempotent installer — apt installs, drops configs, generates password, substitutes it into tinyproxy.conf, enables services, runs four distinct verifications (nft loaded / socket listening / DNS works from tinyproxy UID / proxied egress bypasses Mullvad)
+
+## Kubernetes files
+
+- [k8s/seal-credentials.sh](k8s/seal-credentials.sh): generates a SealedSecret `us-egress-proxy-creds` for a given namespace, containing HTTPS_PROXY/HTTP_PROXY env vars pointing at the proxy with embedded basic auth
+- [k8s/example-consumer.yaml](k8s/example-consumer.yaml): reference Deployment showing envFrom pattern, NO_PROXY config, and an initContainer smoke test that verifies US egress before the app container starts

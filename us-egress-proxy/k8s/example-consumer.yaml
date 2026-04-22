@@ -1,0 +1,63 @@
+# example-consumer.yaml
+#
+# Reference pattern for a workload that needs the US egress proxy for calls
+# to a specific API. Copy and adapt into your own app's manifest set.
+#
+# Prerequisites:
+#   1. host/install.sh has been run on sleeper-service.
+#   2. seal-credentials.sh has been run for this namespace and the resulting
+#      us-egress-proxy-creds-<namespace>-sealed.yaml has been applied.
+#
+# What this shows:
+#   - HTTPS_PROXY / HTTP_PROXY pulled from the sealed secret via envFrom
+#   - NO_PROXY scoped to everything internal so only external calls are
+#     proxied (critical — otherwise in-cluster calls to ClusterIPs would also
+#     try to tunnel through tinyproxy and fail)
+#   - An explicit initContainer smoke-test that fails the pod if the proxy is
+#     somehow routing through Mullvad (defence-in-depth against misconfig)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-us-api-client
+  namespace: REPLACE_ME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: example-us-api-client
+  template:
+    metadata:
+      labels:
+        app: example-us-api-client
+    spec:
+      initContainers:
+        # Fail fast if egress is not actually leaving via a US IP.
+        - name: verify-us-egress
+          image: curlimages/curl:8.8.0
+          envFrom:
+            - secretRef:
+                name: us-egress-proxy-creds
+          env:
+            - name: NO_PROXY
+              value: .cluster.local,.svc,10.0.0.0/8,192.168.0.0/16
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "Checking egress country via proxy..."
+              country=$(curl -fsS --max-time 10 https://ipinfo.io/country)
+              echo "Egress country: $country"
+              [ "$country" = "US" ] || { echo "NOT a US exit — aborting"; exit 1; }
+      containers:
+        - name: app
+          image: YOUR_APP_IMAGE:latest
+          envFrom:
+            - secretRef:
+                name: us-egress-proxy-creds   # provides HTTPS_PROXY, HTTP_PROXY
+          env:
+            - name: NO_PROXY
+              # Do NOT proxy internal traffic. Add more entries if your app
+              # talks to other in-cluster services by hostname.
+              value: .cluster.local,.svc,10.0.0.0/8,192.168.0.0/16,127.0.0.1,localhost
