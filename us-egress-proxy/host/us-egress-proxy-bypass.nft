@@ -2,8 +2,8 @@
 #
 # Marks packets originating from the `tinyproxy` user with Mullvad's "mole"
 # marks so the Mullvad routing policy sends them outside the WireGuard tunnel.
-# See ~/projects/homelab/mullvad-vpn-configuration.md for the full explanation
-# of the mark system. This is the same pattern used by k8s-dns-bypass.nft.
+# See ../../mullvad-vpn-configuration.md for the full explanation of the mark
+# system. This is the same pattern used by k8s-dns-bypass.nft.
 #
 # Priority `filter - 10` runs BEFORE Mullvad's filter (priority 0), so the
 # marks are in place by the time Mullvad's routing lookup happens.
@@ -14,27 +14,27 @@
 # The marks:
 #   ct mark   0x00000f41
 #   meta mark 0x6d6f6c65   (ASCII "mole")
+#
+# ─── Why DNS (port 53) is ALSO marked ──────────────────────────────────────
+# Mullvad's OUTPUT chain has `udp dport 53 reject` firing on ALL port-53
+# traffic (even loopback — see Problem 4 in mullvad-vpn-configuration.md).
+# The only way a DNS query from the tinyproxy UID survives Mullvad's filter
+# is to be marked, just like k8s-dns-bypass marks k8s DNS queries.
+#
+# Marked DNS queries then bypass the tunnel. That means we CANNOT rely on
+# Mullvad's in-tunnel resolver at 10.64.0.1 — it's unreachable from outside
+# the tunnel. Instead, tinyproxy is pointed at a public resolver (1.1.1.1)
+# via a systemd BindReadOnlyPaths drop-in, which IS reachable via the
+# bypass path. That's done in tinyproxy-service-override.conf.
 
 table inet us-egress-proxy {
     chain output {
         type filter hook output priority filter - 10; policy accept;
 
-        # CRITICAL: DNS queries from tinyproxy must NOT be marked. Marking
-        # them sends them outside the VPN tunnel, where Mullvad's DNS server
-        # (10.64.0.1) is unreachable — so tinyproxy fails to resolve any
-        # hostname and every CONNECT returns a 502. This is the inverse of
-        # the k8s-dns-bypass issue documented in
-        # ../../../mullvad-vpn-configuration.md (Problem 2).
-        #
-        # `return` exits the chain for these packets, so no marks are set
-        # and Mullvad's default routing takes them through the tunnel to
-        # 10.64.0.1, which resolves them fine.
-        meta skuid "tinyproxy" udp dport 53 return
-        meta skuid "tinyproxy" tcp dport 53 return
-
-        # Everything else from the tinyproxy user (i.e. the HTTPS/443 data
-        # plane after DNS has resolved the target IP) gets the mole marks
-        # and bypasses the VPN, giving us a US-ISP egress.
+        # Every outbound packet from the tinyproxy user gets the mole marks:
+        # DNS queries (so Mullvad lets them past its port-53 reject and they
+        # reach 1.1.1.1 via the bypass path) AND data-plane HTTPS/443 (so the
+        # proxied request egresses from the ISP IP, not Sweden).
         meta skuid "tinyproxy" ct mark set 0x00000f41 meta mark set 0x6d6f6c65
     }
 }

@@ -21,11 +21,9 @@ block non-US IPs without taking the whole cluster off the VPN.
  │    ▼                                                    │
  │  nftables table `us-egress-proxy` (priority filter-10)  │
  │    meta skuid "tinyproxy"                               │
- │      udp/tcp dport 53 → return (DNS stays in tunnel)    │
- │      everything else →                                  │
- │        ct mark   set 0x00000f41                         │
- │        meta mark set 0x6d6f6c65  ("mole")               │
- │    │                                                    │
+ │      ct mark   set 0x00000f41                           │
+ │      meta mark set 0x6d6f6c65  ("mole")                 │
+ │    │  (applies to DNS and data plane alike)             │
  │    ▼                                                    │
  │  Mullvad policy routing: marked packets skip the tunnel │
  │    → enp42s0 → ISP gateway → public internet (US IP)    │
@@ -36,29 +34,40 @@ Same mark scheme and priority used by the existing `k8s-dns-bypass` —
 see [../mullvad-vpn-configuration.md](../mullvad-vpn-configuration.md)
 for the theory.
 
-### Why DNS is exempted from the mole marks
+### Why DNS also gets the mole marks (and needs a custom resolver)
 
-Mullvad's DNS server lives at `10.64.0.1`, reachable only through the
-WireGuard tunnel. If we mole-mark tinyproxy's DNS queries they'd be routed
-*outside* the tunnel where `10.64.0.1` is unreachable, so tinyproxy can't
-resolve any hostname and every `CONNECT` fails with a 502. The nft rule
-`return`s for port 53 so DNS traffic stays on the tunnel; only the data
-plane (443) gets the marks. This is the inverse of Problem 2 in
-[../mullvad-vpn-configuration.md](../mullvad-vpn-configuration.md).
+Two constraints collide:
+
+1. Mullvad's OUTPUT filter has `udp dport 53 reject` firing on **all**
+   port-53 traffic, even loopback — see Problem 4 in
+   `mullvad-vpn-configuration.md`. An unmarked DNS query from tinyproxy
+   never escapes the host. So DNS **must** be marked.
+2. Marked traffic bypasses the tunnel. Mullvad's in-tunnel DNS at
+   `10.64.0.1` is only reachable inside the tunnel. So tinyproxy **cannot**
+   use the host's default resolver (systemd-resolved → `10.64.0.1`).
+
+Resolution: tinyproxy is pointed at Cloudflare's public anycast resolver
+(`1.1.1.1`), which IS reachable over the bypass path. This is done with a
+systemd drop-in that `BindReadOnlyPaths`-mounts
+`/etc/us-egress-proxy/resolv.conf` over `/etc/resolv.conf` inside tinyproxy's
+mount namespace. Nothing else on the host is affected — systemd-resolved
+continues to answer on `127.0.0.53` for everyone else using Mullvad's DNS.
 
 ## Files
 
 ```
 us-egress-proxy/
-├── README.md                            # this file
-├── host/                                # deployed on sleeper-service
-│   ├── tinyproxy.conf                   # proxy config (LAN-bound, basic auth)
-│   ├── us-egress-proxy-bypass.nft       # nft rule marking tinyproxy's packets
-│   ├── us-egress-proxy-bypass.service   # systemd unit that loads the nft rule
-│   └── install.sh                       # one-shot installer (run as root)
+├── README.md                              # this file
+├── host/                                  # deployed on sleeper-service
+│   ├── tinyproxy.conf                     # proxy config (LAN-bound, basic auth)
+│   ├── tinyproxy-resolv.conf              # overridden resolv.conf (1.1.1.1)
+│   ├── tinyproxy-service-override.conf    # systemd drop-in bind-mounting it
+│   ├── us-egress-proxy-bypass.nft         # nft rule marking tinyproxy's packets
+│   ├── us-egress-proxy-bypass.service     # systemd unit that loads the nft rule
+│   └── install.sh                         # one-shot installer (run as root)
 └── k8s/
-    ├── seal-credentials.sh              # generates a SealedSecret per ns
-    └── example-consumer.yaml            # reference Deployment pattern
+    ├── seal-credentials.sh                # generates a SealedSecret per ns
+    └── example-consumer.yaml              # reference Deployment pattern
 ```
 
 ## Install
