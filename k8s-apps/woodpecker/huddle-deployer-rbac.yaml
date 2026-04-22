@@ -1,26 +1,35 @@
 # huddle-deployer
 #
 # ServiceAccount used by the Woodpecker CI pipeline (.woodpecker/build-deploy.yml
-# in andrewmyhre/huddle) to run `helm upgrade` against the `huddle` namespace.
+# in andrewmyhre/huddle) to run `helm upgrade --atomic` against the `huddle`
+# namespace.
 #
-# Scope rationale (cluster-admin):
-#   The huddle Helm chart (infra/helm/huddle/) installs:
-#     - Namespaced resources in the `huddle` namespace (Deployments, Services,
-#       Ingress, ConfigMaps, Secret)
-#     - A cluster-scoped PersistentVolume (templates/data-pv.yaml)
-#     - ClusterRoles + ClusterRoleBindings for the huddle-agent SA
-#       (templates/agent-rbac.yaml) — including verbs like `escalate` and
-#       `bind` which require the grantor to also hold them.
+# ── Scope (narrowed 2026-04-22) ──────────────────────────────────────────────
+# Previously bound to cluster-admin because the chart shipped a cluster-scoped
+# PersistentVolume (huddle-data) and must create ClusterRole/ClusterRoleBinding
+# for the huddle-agent impersonation model. The PV has since been split out of
+# the chart (infra/bootstrap/huddle-data-pv.yaml, applied once per cluster), so
+# the deployer no longer needs to manage PVs.
 #
-#   Granting namespace-admin alone would fail on the PV + cluster-scoped RBAC.
-#   Once we split those out of the chart (follow-up PV migration work), this can
-#   be narrowed to a focused ClusterRole + per-namespace RoleBinding.
+# What the chart still makes cluster-scoped:
+#   - Namespace `huddle`         (created on first install)
+#   - ClusterRole huddle-agent           } the impersonation-based agent
+#   - ClusterRole huddle-project-agent   } security model in agent-rbac.yaml
+#   - ClusterRoleBinding huddle-agent    }
 #
-# Token delivery:
-#   A long-lived ServiceAccount token Secret is generated automatically (see
-#   huddle-deployer-token.yaml). That Secret's ca.crt + token are packed into a
-#   kubeconfig and sealed as `woodpecker-huddle-kubeconfig` in the woodpecker
-#   namespace. The pipeline mounts it at /root/.kube/config.
+# Note on privilege escalation: K8s RBAC requires the requester to hold either
+# (a) every verb/resource combo it grants, OR (b) the `escalate` verb on the
+# {cluster,}roles resource. We take option (b) — a single `escalate` verb
+# rather than mirroring the chart's sensitive permissions (impersonate,
+# cross-apiGroup create/update) cluster-wide onto the deployer. This keeps the
+# blast radius of a stolen token scoped to the `huddle` namespace admin bundle
+# + RBAC management, rather than effectively granting workload-admin across the
+# whole cluster.
+#
+# Token delivery is unchanged: the SA's long-lived token Secret (huddle-
+# deployer-token, below) is packed into a kubeconfig and sealed as
+# `woodpecker-huddle-kubeconfig` in the woodpecker namespace; the pipeline
+# mounts it at /root/.kube/config.
 #
 # This file is part of the homelab repo (/projects/homelab/k8s-apps/woodpecker/).
 
@@ -53,12 +62,14 @@ metadata:
 type: kubernetes.io/service-account-token
 
 ---
-# Cluster-admin so helm can manage PV + ClusterRoles the chart currently renders.
-# Narrow this once the PV and cluster-scoped RBAC are split out of the chart.
+# Namespace-scoped: full admin within the `huddle` namespace.
+# Covers every Deployment/Service/Ingress/ConfigMap/Secret/PVC/SA/Role/
+# RoleBinding the chart creates inside the namespace.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: huddle-deployer-cluster-admin
+  name: huddle-deployer-admin
+  namespace: huddle
   labels:
     app.kubernetes.io/component: ci-deployer
     app.kubernetes.io/part-of: woodpecker
@@ -70,4 +81,48 @@ subjects:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: admin
+
+---
+# Cluster-scoped minimum: the narrow set of cluster-scoped verbs helm needs
+# to render the chart. This is deliberately a single ClusterRole so it's easy
+# to diff against `infra/helm/huddle/templates/agent-rbac.yaml`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: huddle-deployer
+  labels:
+    app.kubernetes.io/component: ci-deployer
+    app.kubernetes.io/part-of: woodpecker
+    app.kubernetes.io/target: huddle
+rules:
+  # ── Chart-rendered cluster-scoped objects ───────────────────────────────
+  # Namespace: chart's templates/namespace.yaml
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+  # ClusterRoles + ClusterRoleBindings: chart's templates/agent-rbac.yaml
+  # `bind` + `escalate` let helm upgrade refresh the agent's bindings/roles
+  # without the deployer itself holding every verb the chart grants.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "bind", "escalate"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: huddle-deployer
+  labels:
+    app.kubernetes.io/component: ci-deployer
+    app.kubernetes.io/part-of: woodpecker
+    app.kubernetes.io/target: huddle
+subjects:
+  - kind: ServiceAccount
+    name: huddle-deployer
+    namespace: woodpecker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: huddle-deployer
