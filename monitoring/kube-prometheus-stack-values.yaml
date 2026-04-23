@@ -173,7 +173,7 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: local-path
+          storageClassName: slow
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -191,7 +191,7 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: local-path
+          storageClassName: slow
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:

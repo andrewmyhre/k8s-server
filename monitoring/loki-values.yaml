@@ -35,7 +35,7 @@ singleBinary:
       memory: 512Mi
   persistence:
     enabled: true
-    storageClass: local-path
+    storageClass: slow
     size: 20Gi
 
 # Disable multi-component mode (not needed for single-binary)
