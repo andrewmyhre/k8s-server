@@ -1,0 +1,110 @@
+# woodpecker-agent-1 — second build agent
+#
+# A second Woodpecker build agent (`woodpecker-agent-1`) that runs
+# alongside the original `woodpecker-agent` StatefulSet to give us
+# two parallel pipeline runners.
+#
+# How this was bootstrapped:
+#   1. Used the Woodpecker REST API to create an agent record:
+#        POST /api/agents
+#          { "name": "woodpecker-agent-1", "no_schedule": false }
+#      The response returned a fresh per-agent token. Agent ID is 3
+#      in the Woodpecker database (ID 2 was a deleted/test agent).
+#   2. Sealed that token into `woodpecker-agent-1-secret`
+#      (manifest in this directory).
+#   3. This StatefulSet consumes the token via envFrom — Woodpecker
+#      reads `WOODPECKER_AGENT_SECRET` and connects to the server's
+#      gRPC port (woodpecker-server:9000) to register and pick up
+#      jobs.
+#
+# To rotate the token:
+#   - DELETE /api/agents/3 then re-POST to create a fresh one, OR
+#   - PATCH /api/agents/3 to regenerate (if the API supports it),
+#   re-seal as `WOODPECKER_AGENT_SECRET`, kubectl apply, and the
+#   StatefulSet will roll automatically.
+#
+# Capacity: each agent runs one workflow at a time
+# (WOODPECKER_BACKEND=kubernetes, default). With this second agent
+# we can run two workflows concurrently.
+#
+# Notes on parity with `woodpecker-agent`:
+#   - Same image, same env, same securityContext, same SA
+#     (woodpecker-agent), same RoleBinding (already covers this SA).
+#   - Distinct selector labels (`app.kubernetes.io/name: agent-1`)
+#     so the two StatefulSets don't fight over each other's pods.
+#   - Distinct PVC name (`agent-1-config`) per StatefulSet best
+#     practice; backed by local-path same as the original.
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: woodpecker-agent-1
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/instance: woodpecker
+    app.kubernetes.io/name: agent-1
+    app.kubernetes.io/managed-by: homelab
+spec:
+  replicas: 1
+  serviceName: woodpecker-agent-1
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: woodpecker
+      app.kubernetes.io/name: agent-1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: woodpecker
+        app.kubernetes.io/name: agent-1
+    spec:
+      serviceAccountName: woodpecker-agent
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: agent
+          image: docker.io/woodpeckerci/woodpecker-agent:v3.13.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: WOODPECKER_BACKEND
+              value: kubernetes
+            - name: WOODPECKER_BACKEND_K8S_NAMESPACE
+              value: woodpecker
+            - name: WOODPECKER_BACKEND_K8S_NAMESPACE_PER_ORGANIZATION
+              value: "false"
+            - name: WOODPECKER_BACKEND_K8S_POD_ANNOTATIONS
+            - name: WOODPECKER_BACKEND_K8S_POD_LABELS
+            - name: WOODPECKER_BACKEND_K8S_STORAGE_CLASS
+              value: local-path
+            - name: WOODPECKER_BACKEND_K8S_STORAGE_RWX
+              value: "false"
+            - name: WOODPECKER_BACKEND_K8S_VOLUME_SIZE
+              value: 10G
+            - name: WOODPECKER_CONNECT_RETRY_COUNT
+              value: "5"
+            - name: WOODPECKER_SERVER
+              value: woodpecker-server.woodpecker.svc.cluster.local:9000
+          envFrom:
+            - secretRef:
+                name: woodpecker-agent-1-secret
+            - secretRef:
+                name: aws-deploy-credentials
+          securityContext:
+            runAsGroup: 1000
+            runAsUser: 1000
+          volumeMounts:
+            - name: agent-1-config
+              mountPath: /etc/woodpecker
+  volumeClaimTemplates:
+    - metadata:
+        name: agent-1-config
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
