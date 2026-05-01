@@ -1,0 +1,157 @@
+# woodpecker-manager
+#
+# A reusable ClusterRole granting the rights needed to create, observe,
+# debug, and tear down Woodpecker CI pipeline runs in the `woodpecker`
+# namespace. Bound via RoleBinding (not ClusterRoleBinding) so it stays
+# scoped to that one namespace — agents have no privileges anywhere
+# else as a result of this binding.
+#
+# What "manage pipelines" means in our setup:
+#   - Each Woodpecker build runs as a `wp-<id>` pod created by the
+#     `woodpecker-agent`. Each step optionally has a `wp-<id>-step-secret`
+#     and short-lived ConfigMap/Service/PVC.
+#   - To inspect, debug, retry, or cancel a build, an operator agent
+#     needs full lifecycle on those pods + their step secrets/configs,
+#     plus log/exec/port-forward to attach to a running step.
+#   - StatefulSets (server/agent) are READ-ONLY through this role; we
+#     do not want operator agents accidentally restarting Woodpecker
+#     itself. Use the cluster admin to operate on the StatefulSets.
+#
+# Bound to the per-project agent ServiceAccounts in:
+#   huddle, ai-services, scribi, donk, legal-api
+#
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: woodpecker-manager
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+rules:
+  # Pipeline pods — full lifecycle (create, retry, cancel via delete, etc.)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  # Logs and live debugging of running steps
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/attach", "pods/portforward"]
+    verbs: ["create", "get"]
+  # Step secrets, ConfigMaps, Services, and PVCs created/consumed by builds
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "services", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Event timeline (for "why is this build pending?" debugging)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  # Server / agent status — read-only. Restart/scale of the Woodpecker
+  # StatefulSets requires cluster-admin, by design.
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  # Some pipeline steps may use Jobs
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+# huddle-agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: huddle-agent-woodpecker-manager
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: woodpecker-manager
+subjects:
+  - kind: ServiceAccount
+    name: huddle-agent
+    namespace: huddle
+
+---
+# ai-services-agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-services-agent-woodpecker-manager
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: woodpecker-manager
+subjects:
+  - kind: ServiceAccount
+    name: ai-services-agent
+    namespace: ai-services
+
+---
+# scribi-agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scribi-agent-woodpecker-manager
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: woodpecker-manager
+subjects:
+  - kind: ServiceAccount
+    name: scribi-agent
+    namespace: scribi
+
+---
+# donk-agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: donk-agent-woodpecker-manager
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: woodpecker-manager
+subjects:
+  - kind: ServiceAccount
+    name: donk-agent
+    namespace: donk
+
+---
+# legal-api-agent
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: legal-api-agent-woodpecker-manager
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: woodpecker-manager
+subjects:
+  - kind: ServiceAccount
+    name: legal-api-agent
+    namespace: legal-api
