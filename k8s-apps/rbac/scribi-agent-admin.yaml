@@ -1,0 +1,27 @@
+# scribi-agent admin RoleBinding
+#
+# Grants the namespace-scoped built-in `admin` ClusterRole to the
+# scribi-agent ServiceAccount in the scribi namespace. Mirrors the
+# `<project>-agent-admin` pattern used across the cluster (donk, huddle,
+# legal-api, ai-services, etc.) so agents impersonating the project SA
+# get full read/write within their own namespace and nothing more.
+#
+# Note: the scribi-agent ServiceAccount itself already exists; we do not
+# recreate it here.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scribi-agent-admin
+  namespace: scribi
+  labels:
+    app.kubernetes.io/managed-by: homelab
+    app.kubernetes.io/component: agent-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - kind: ServiceAccount
+    name: scribi-agent
+    namespace: scribi
