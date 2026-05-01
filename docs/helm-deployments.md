@@ -42,6 +42,9 @@ helm repo update
 | prometheus-pushgateway | monitoring | prometheus-community/prometheus-pushgateway | 3.6.0 | — |
 | **CI/CD** |
 | argo-workflows | argo | argo/argo-workflows | 0.47.4 | `argo/argo-workflows-values.yaml` |
+| buildkitd | buildkit | buildkit-service | 1.4.0 | (chart values not checked in) |
+| **Container Registry** |
+| registry | registry | (raw manifests, `registry:2`) | — | — |
 | **Applications** |
 | huddle | huddle | huddle/huddle | 0.1.0 | (app chart) |
 | huddle-test | huddle-test | huddle/huddle | 0.1.0 | (app chart) |
