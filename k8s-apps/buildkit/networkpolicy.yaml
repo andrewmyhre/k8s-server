@@ -29,6 +29,11 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: woodpecker
+        # Scribi agents build container images during dev sessions,
+        # same pattern as huddle.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: scribi
       ports:
         - port: 1234
           protocol: TCP
