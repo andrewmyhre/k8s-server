@@ -21,7 +21,7 @@ and are a useful reference.
 |------|---------|
 | `huddle-deployer-rbac.yaml` | ServiceAccount `huddle-deployer` + long-lived token Secret + `cluster-admin` ClusterRoleBinding. Used by the huddle `.woodpecker/build-deploy.yml` pipeline to run `helm upgrade` against the `huddle` namespace. |
 | `huddle-deployer-kubeconfig-sealed.yaml` | SealedSecret that materializes `Secret/woodpecker-huddle-kubeconfig` in the `woodpecker` namespace. The pipeline mounts this as `/root/.kube/config`. |
-| `woodpecker-agent-1.yaml` | Second build agent StatefulSet (`woodpecker-agent-1`). Mirrors the chart-deployed `woodpecker-agent` StatefulSet but uses its own per-agent token. Lets us run two pipelines concurrently. |
+| `woodpecker-agent-1.yaml` | Second build agent StatefulSet (`woodpecker-agent-1`). Mirrors the chart-deployed `woodpecker-agent` StatefulSet but uses its own per-agent token. Lets us run two pipelines concurrently. Resources: `200m`/`400Mi` requested, `1`/`4Gi` limit. |
 | `woodpecker-agent-1-secret-sealed.yaml` | SealedSecret holding the per-agent token (`WOODPECKER_AGENT_SECRET`) for `woodpecker-agent-1`. Token was minted via the Woodpecker API (`POST /api/agents`) — agent ID 3 in the Woodpecker DB. |
 | `README.md` | This file. |
 
@@ -133,6 +133,38 @@ updated `huddle-deployer-kubeconfig-sealed.yaml` to this repo.
 
 4. `kubectl apply -f woodpecker-agent-N.yaml` and verify the new agent
    shows `last_contact != 0` in `GET /api/agents`.
+
+## Resource governance
+
+Both build agents are sized identically:
+
+| | Requests | Limits |
+|---|---|---|
+| CPU | `200m` | `1` |
+| Memory | `400Mi` | `4Gi` |
+
+The agent container itself is light — it just brokers between the server
+and the per-step pods it spawns. The `4Gi` limit is a generous ceiling
+for buffering large pipeline logs/artifacts; the `400Mi` request is the
+steady-state floor.
+
+`woodpecker-agent-1` carries the resources block in
+`woodpecker-agent-1.yaml` (this repo). The chart-managed
+`woodpecker-agent` StatefulSet has the same resources patched in-cluster
+— there is currently **no** Helm values file for the woodpecker chart
+(see "The Helm release itself is not tracked in this repo" above), so
+the patch can be lost on a future `helm upgrade`. To re-apply:
+
+```bash
+kubectl -n woodpecker patch sts woodpecker-agent --type=json -p='[
+  {"op":"replace","path":"/spec/template/spec/containers/0/resources",
+   "value":{"requests":{"cpu":"200m","memory":"400Mi"},
+            "limits":{"cpu":"1","memory":"4Gi"}}}
+]'
+```
+
+Folding these values into a proper `k8s-apps/woodpecker-values.yaml`
+is a follow-up.
 
 ## Related changes
 

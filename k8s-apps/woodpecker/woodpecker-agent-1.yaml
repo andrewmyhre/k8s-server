@@ -94,6 +94,17 @@ spec:
                 name: woodpecker-agent-1-secret
             - secretRef:
                 name: aws-deploy-credentials
+          # The agent container itself is light — it just brokers
+          # between the server and the per-step pods it spawns. The
+          # 4Gi limit is a generous ceiling for buffering large pipeline
+          # logs/artifacts; the 400Mi request is the steady-state floor.
+          resources:
+            requests:
+              cpu: 200m
+              memory: 400Mi
+            limits:
+              cpu: "1"
+              memory: 4Gi
           securityContext:
             runAsGroup: 1000
             runAsUser: 1000
