@@ -5,6 +5,13 @@
 #   helm install fluent-bit fluent/fluent-bit \
 #     --namespace monitoring --create-namespace \
 #     --values monitoring/fluent-bit-values.yaml --timeout 5m
+#
+# As of PR feat/fluent-bit-huddle-tail, FB also tails Huddle's API pino log
+# and the SDK stream-json files written by every spawned session, so
+# `{app="huddle"}` queries in Grafana / LogCLI surface the full
+# conversation pipeline (round-trip results, tool_use boundaries, compaction
+# events) without having to SSH into the dev / prod hosts. See the
+# `huddle-*` Inputs / Filters / Output blocks below.
 
 resources:
   requests:
@@ -13,6 +20,97 @@ resources:
   limits:
     cpu: 200m
     memory: 128Mi
+
+# ── Host paths the DaemonSet needs to read for the Huddle tails ──────
+# Both files live as plain JSON-per-line on the host filesystem; FB tails
+# them with the `json` parser. The `daemonSetVolumes` /
+# `daemonSetVolumeMounts` keys are the official chart's escape hatch for
+# adding hostPath mounts beyond the default `/var/log` set.
+#
+# Three paths, mounted read-only:
+#   1. Huddle API's pino log — same file the Settings → Logs viewer tails
+#   2. Dev SDK transcripts — PR fix/voice-settings... explained the
+#      `.claude-test/` mount; that's where dev's per-session JSONLs land
+#   3. Prod SDK transcripts — `.claude/projects/` on the host
+daemonSetVolumes:
+  - name: huddle-api-logs
+    hostPath:
+      path: /home/andrew/projects/huddle/logs
+      type: DirectoryOrCreate
+  - name: huddle-sdk-projects-dev
+    hostPath:
+      path: /home/andrew/.claude-test/projects
+      type: DirectoryOrCreate
+  - name: huddle-sdk-projects-prod
+    hostPath:
+      path: /home/andrew/.claude/projects
+      type: DirectoryOrCreate
+
+daemonSetVolumeMounts:
+  - name: huddle-api-logs
+    mountPath: /huddle/api-logs
+    readOnly: true
+  - name: huddle-sdk-projects-dev
+    mountPath: /huddle/sdk-projects-dev
+    readOnly: true
+  - name: huddle-sdk-projects-prod
+    mountPath: /huddle/sdk-projects-prod
+    readOnly: true
+
+# ── Lua helpers ─────────────────────────────────────────────────────
+# FB's built-in filter set can't extract a substring from a regex group,
+# so a small Lua filter handles the path → project-name promotion. Keys
+# parsed off the source_file path:
+#
+#   /huddle/sdk-projects-dev/-projects-huddle/abc-uuid.jsonl
+#   ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^ ^^^^^^^^
+#                  └── env             └── encoded path → project name
+#                                                    └── claude session id (filename)
+extraVolumes: []
+extraVolumeMounts: []
+
+luaScripts:
+  huddle_path_metadata.lua: |
+    -- Parse the SDK JSONL file path into structured metadata fields.
+    -- Called from a [FILTER] of type lua matching huddle.sdk.* tags.
+    -- Expects record["source_file"] to be the absolute path FB recorded
+    -- via Path_Key. Adds:
+    --   record.project   — the project segment ("huddle", "ai-services", ...)
+    --   record.env       — "dev" or "prod" depending on which mount it came from
+    --   record.claude_session_id — UUID from the .jsonl filename
+    function decorate(tag, ts, record)
+      local path = record["source_file"]
+      if not path then return 0, ts, record end
+
+      -- env from the mount root
+      if path:match("^/huddle/sdk%-projects%-dev/") then
+        record["env"] = "dev"
+      elseif path:match("^/huddle/sdk%-projects%-prod/") then
+        record["env"] = "prod"
+      end
+
+      -- project from the encoded directory segment (`-foo-bar-baz`)
+      -- We take the LAST hyphen-separated segment which by the SDK's
+      -- encoding is the project directory name.
+      local encoded = path:match("/sdk%-projects%-[a-z]+/([^/]+)/")
+      if encoded then
+        local segments = {}
+        for s in encoded:gmatch("-([^-]+)") do segments[#segments + 1] = s end
+        if #segments > 0 then
+          record["project"] = segments[#segments]
+        end
+      end
+
+      -- claude_session_id from the filename (UUID before .jsonl)
+      local sid = path:match("/([%w-]+)%.jsonl$")
+      if sid then record["claude_session_id"] = sid end
+
+      -- Drop the raw path before it ships to Loki — it's verbose and
+      -- the structured fields above replace it.
+      record["source_file"] = nil
+
+      return 1, ts, record
+    end
 
 config:
   service: |
@@ -36,6 +134,44 @@ config:
         Skip_Long_Lines   On
         Refresh_Interval  10
 
+    # Huddle API pino log — JSON-per-line, single file. The host path is
+    # mounted at /huddle/api-logs; the file rotates rarely so a 10s
+    # refresh is plenty.
+    [INPUT]
+        Name              tail
+        Tag               huddle.api
+        Path              /huddle/api-logs/huddle-api.log
+        Parser            json
+        DB                /var/log/flb_huddle_api.db
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
+    # Huddle SDK transcript JSONLs — one file per Claude session, written
+    # by the SDK CLI subprocess directly. Glob over BOTH dev and prod
+    # mounts; the lua filter below tags `env` from the path.
+    [INPUT]
+        Name              tail
+        Tag               huddle.sdk.dev
+        Path              /huddle/sdk-projects-dev/*/*.jsonl
+        Parser            json
+        Path_Key          source_file
+        DB                /var/log/flb_huddle_sdk_dev.db
+        Mem_Buf_Limit     10MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
+    [INPUT]
+        Name              tail
+        Tag               huddle.sdk.prod
+        Path              /huddle/sdk-projects-prod/*/*.jsonl
+        Parser            json
+        Path_Key          source_file
+        DB                /var/log/flb_huddle_sdk_prod.db
+        Mem_Buf_Limit     10MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
   filters: |
     [FILTER]
         Name                kubernetes
@@ -49,12 +185,63 @@ config:
         K8S-Logging.Parser  On
         K8S-Logging.Exclude Off
 
+    # ── Huddle API: stamp the constant labels.
+    # `service` is set client-side by pino's `base` (PR
+    # feat/huddle-pino-loki-bindings); we keep `app` / `component` as
+    # the canonical Loki labels here so queries don't depend on a Huddle
+    # version that may not have shipped yet.
+    [FILTER]
+        Name           modify
+        Match          huddle.api
+        Add            app huddle
+        Add            component api
+
+    # ── Huddle SDK: stamp constant labels for both env tags.
+    [FILTER]
+        Name           modify
+        Match          huddle.sdk.*
+        Add            app huddle
+        Add            component sdk-stream
+
+    # ── Huddle SDK: extract structured-metadata fields from the path.
+    # Lua-only because FB's modify/grep don't handle regex groups.
+    # See luaScripts/huddle_path_metadata.lua above.
+    [FILTER]
+        Name      lua
+        Match     huddle.sdk.*
+        Script    /fluent-bit/scripts/huddle_path_metadata.lua
+        Call      decorate
+
   outputs: |
     [OUTPUT]
         Name            loki
-        Match           *
+        Match           kube.*
         Host            loki.monitoring.svc.cluster.local
         Port            3100
         Labels          job=fluent-bit
         Label_Keys      $kubernetes['namespace_name'],$kubernetes['pod_name'],$kubernetes['container_name']
         Auto_Kubernetes_Labels On
+
+    # Huddle output — split off as a separate block so the label set is
+    # tuned for cardinality. The labels here are intentionally
+    # low-cardinality (single-digit values per dimension): app stays
+    # constant, component is api|sdk-stream, env is dev|prod.
+    #
+    # Everything that scales with the number of sessions / agents /
+    # projects (`session_id`, `claude_session_id`, `project`,
+    # `agent_name`, `type`, `subtype`) goes into Loki structured
+    # metadata via Structured_Metadata_Map_Keys — queryable by
+    # `| json | session_id="..."` without exploding the index.
+    #
+    # `Drop_Single_Key Off` preserves the full record body when there's
+    # a single field — without it, the api log's `msg` field can land
+    # alone and FB drops the wrapper.
+    [OUTPUT]
+        Name                          loki
+        Match                         huddle.*
+        Host                          loki.monitoring.svc.cluster.local
+        Port                          3100
+        Labels                        job=fluent-bit
+        Label_Keys                    $app,$component,$env
+        Structured_Metadata_Map_Keys  $session_id,$claude_session_id,$project,$agent_name,$type,$subtype,$level
+        Drop_Single_Key               Off
