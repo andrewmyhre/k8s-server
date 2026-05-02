@@ -1,0 +1,21 @@
+[Unit]
+Description=Load nftables rules that exempt tinyproxy traffic from Mullvad VPN
+Documentation=file:///projects/homelab/us-egress-proxy/README.md
+# Must load after Mullvad so its chains/tables exist; our priority
+# (filter - 10) ensures we run before Mullvad's filter regardless.
+After=mullvad-daemon.service network-pre.target
+Wants=mullvad-daemon.service
+# If the nft rule fails to load, tinyproxy traffic would leak through the VPN
+# (wrong-country egress, API calls still blocked). Make tinyproxy depend on us.
+Before=tinyproxy.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/us-egress-proxy-bypass.nft
+ExecStop=/usr/sbin/nft delete table inet us-egress-proxy
+# Reload re-applies the file (handy after edits).
+ExecReload=/usr/sbin/nft -f /etc/nftables.d/us-egress-proxy-bypass.nft
+
+[Install]
+WantedBy=multi-user.target

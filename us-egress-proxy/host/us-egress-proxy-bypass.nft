@@ -1,0 +1,48 @@
+# us-egress-proxy-bypass.nft
+#
+# Marks packets originating from the `tinyproxy` user with Mullvad's "mole"
+# marks so the Mullvad routing policy sends them outside the WireGuard tunnel.
+# See ../../mullvad-vpn-configuration.md for the full explanation of the mark
+# system. This is the same pattern used by k8s-dns-bypass.nft.
+#
+# Uses `type route` (not `type filter`) so that setting meta mark triggers a
+# routing re-evaluation. Without this, the kernel routes the packet to
+# wg0-mullvad BEFORE our marks are applied, and the bypass never fires.
+# Priority `mangle - 10` runs before Mullvad's own mangle chain (-150).
+#
+# Install location: /etc/nftables.d/us-egress-proxy-bypass.nft
+# Loaded by:        us-egress-proxy-bypass.service
+#
+# The marks:
+#   ct mark   0x00000f41
+#   meta mark 0x6d6f6c65   (ASCII "mole")
+#
+# ─── Why DNS (port 53) is ALSO marked ──────────────────────────────────────
+# Mullvad's OUTPUT chain has `udp dport 53 reject` firing on ALL port-53
+# traffic (even loopback — see Problem 4 in mullvad-vpn-configuration.md).
+# The only way a DNS query from the tinyproxy UID survives Mullvad's filter
+# is to be marked, just like k8s-dns-bypass marks k8s DNS queries.
+#
+# Marked DNS queries then bypass the tunnel. That means we CANNOT rely on
+# Mullvad's in-tunnel resolver at 10.64.0.1 — it's unreachable from outside
+# the tunnel. Instead, tinyproxy is pointed at a public resolver (1.1.1.1)
+# via a systemd BindReadOnlyPaths drop-in, which IS reachable via the
+# bypass path. That's done in tinyproxy-service-override.conf.
+
+table inet us-egress-proxy {
+    chain output {
+        type route hook output priority mangle - 10; policy accept;
+
+        # Every outbound packet from the tinyproxy user gets the mole marks:
+        # DNS queries (so Mullvad lets them past its port-53 reject and they
+        # reach 1.1.1.1 via the bypass path) AND data-plane HTTPS/443 (so the
+        # proxied request egresses from the ISP IP, not Sweden).
+        meta skuid "tinyproxy" ct mark set 0x00000f41 meta mark set 0x6d6f6c65
+
+        # cloudflared (Cloudflare Tunnel) must also bypass Mullvad.
+        # Cloudflare edge rejects tunnel registration from VPN exit IPs.
+        # Port 7844 is the tunnel control/data plane (QUIC + HTTP/2 fallback).
+        tcp dport 7844 ct mark set 0x00000f41 meta mark set 0x6d6f6c65
+        udp dport 7844 ct mark set 0x00000f41 meta mark set 0x6d6f6c65
+    }
+}

@@ -1,0 +1,21 @@
+# us-egress-proxy
+
+> HTTP/HTTPS proxy on sleeper-service whose egress bypasses Mullvad VPN, so cluster workloads can reach APIs that block non-US IPs without taking the whole cluster off the VPN.
+
+## Documentation
+
+- [README.md](README.md): Architecture, install steps, verification, operational notes
+
+## Host files (deployed to sleeper-service)
+
+- [host/tinyproxy.conf](host/tinyproxy.conf): tinyproxy config — bound to 192.168.0.10:8888, basic auth, LAN+pod+service CIDR allow list, CONNECT restricted to :443
+- [host/tinyproxy-resolv.conf](host/tinyproxy-resolv.conf): overridden resolv.conf containing `nameserver 1.1.1.1` / `1.0.0.1`; bind-mounted into tinyproxy's mount namespace so it does not try to reach Mullvad's in-tunnel DNS (unreachable via the bypass path)
+- [host/tinyproxy-service-override.conf](host/tinyproxy-service-override.conf): systemd drop-in for tinyproxy.service that `BindReadOnlyPaths`-mounts the above over /etc/resolv.conf, scoped to this one service
+- [host/us-egress-proxy-bypass.nft](host/us-egress-proxy-bypass.nft): nftables rule tagging every tinyproxy packet (including DNS) with Mullvad's "mole" marks (0x00000f41 / 0x6d6f6c65) so Mullvad's filter lets them through and routes them outside the tunnel
+- [host/us-egress-proxy-bypass.service](host/us-egress-proxy-bypass.service): systemd unit that loads the nft rule after mullvad-daemon and before tinyproxy.service
+- [host/install.sh](host/install.sh): idempotent installer — apt installs, drops configs + systemd drop-in + custom resolv.conf, generates password, enables services, runs five distinct verifications (nft loaded / socket listening / tinyproxy resolv.conf overridden / DNS works from tinyproxy's namespace / proxied egress bypasses Mullvad)
+
+## Kubernetes files
+
+- [k8s/seal-credentials.sh](k8s/seal-credentials.sh): generates a SealedSecret `us-egress-proxy-creds` for a given namespace, containing HTTPS_PROXY/HTTP_PROXY env vars pointing at the proxy with embedded basic auth
+- [k8s/example-consumer.yaml](k8s/example-consumer.yaml): reference Deployment showing envFrom pattern, NO_PROXY config, and an initContainer smoke test that verifies US egress before the app container starts
